@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -74,7 +74,7 @@ export default function Auth() {
           }
         } else {
           toast.success('Account created successfully!');
-          navigate('/');
+          navigate('/dashboard');
         }
       } else {
         const { error } = await signIn(email, password);
@@ -86,7 +86,7 @@ export default function Auth() {
           }
         } else {
           toast.success('Welcome back!');
-          navigate('/');
+          navigate('/dashboard');
         }
       }
     } finally {
@@ -107,15 +107,17 @@ export default function Auth() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md relative z-10"
       >
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl gradient-primary mb-4">
-            <span className="text-3xl">🏢</span>
+        <Link to="/" className="inline-flex items-center justify-center mb-8">
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <span className="text-2xl font-bold text-foreground">AI Office</span>
           </div>
-          <h1 className="text-3xl font-bold text-foreground">AI Office</h1>
-          <p className="text-muted-foreground mt-2">
-            Your AI-powered workspace automation platform
-          </p>
-        </div>
+        </Link>
+        <p className="text-muted-foreground">
+          Your AI-powered workspace automation platform
+        </p>
 
         <Card variant="glow">
           <CardHeader className="text-center pb-2">
