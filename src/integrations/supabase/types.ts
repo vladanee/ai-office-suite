@@ -14,13 +14,309 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      departments: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          office_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          office_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          office_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "departments_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      office_members: {
+        Row: {
+          id: string
+          joined_at: string
+          office_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          office_id: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          office_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "office_members_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offices: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          owner_id: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          owner_id: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          owner_id?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      personas: {
+        Row: {
+          avatar: string | null
+          created_at: string
+          department_id: string | null
+          id: string
+          name: string
+          office_id: string
+          role: string
+          skills: string[] | null
+          status: string | null
+          system_prompt: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar?: string | null
+          created_at?: string
+          department_id?: string | null
+          id?: string
+          name: string
+          office_id: string
+          role: string
+          skills?: string[] | null
+          status?: string | null
+          system_prompt?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar?: string | null
+          created_at?: string
+          department_id?: string | null
+          id?: string
+          name?: string
+          office_id?: string
+          role?: string
+          skills?: string[] | null
+          status?: string | null
+          system_prompt?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personas_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personas_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          current_office_id: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          current_office_id?: string | null
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          current_office_id?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_current_office_id_fkey"
+            columns: ["current_office_id"]
+            isOneToOne: false
+            referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_runs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          current_node_id: string | null
+          error: string | null
+          id: string
+          office_id: string
+          progress: number | null
+          result: Json | null
+          started_at: string | null
+          status: string | null
+          workflow_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          current_node_id?: string | null
+          error?: string | null
+          id?: string
+          office_id: string
+          progress?: number | null
+          result?: Json | null
+          started_at?: string | null
+          status?: string | null
+          workflow_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          current_node_id?: string | null
+          error?: string | null
+          id?: string
+          office_id?: string
+          progress?: number | null
+          result?: Json | null
+          started_at?: string | null
+          status?: string | null
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_runs_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_runs_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflows: {
+        Row: {
+          created_at: string
+          description: string | null
+          edges: Json | null
+          id: string
+          is_active: boolean | null
+          name: string
+          nodes: Json | null
+          office_id: string
+          updated_at: string
+          version: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          edges?: Json | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          nodes?: Json | null
+          office_id: string
+          updated_at?: string
+          version?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          edges?: Json | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          nodes?: Json | null
+          office_id?: string
+          updated_at?: string
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflows_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_office_admin: { Args: { office_uuid: string }; Returns: boolean }
+      is_office_member: { Args: { office_uuid: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
