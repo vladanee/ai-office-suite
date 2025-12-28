@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { TopBar } from '@/components/layout/TopBar';
-import { useAppStore } from '@/store/appStore';
 import { generatePersonaTasks, GeneratedTask } from '@/lib/aiTaskGenerator';
 import { toast } from 'sonner';
 import {
@@ -15,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useCurrentOffice, usePersonas, useDepartments } from '@/hooks/useOfficeData';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -30,7 +30,10 @@ const itemVariants = {
 };
 
 export default function Personas() {
-  const { personas, departments } = useAppStore();
+  const { currentOffice, loading: officeLoading } = useCurrentOffice();
+  const { personas, loading: personasLoading } = usePersonas(currentOffice?.id);
+  const { departments, loading: deptsLoading } = useDepartments(currentOffice?.id);
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
   const [generatingFor, setGeneratingFor] = useState<string | null>(null);
@@ -38,18 +41,21 @@ export default function Personas() {
   const [showTasksDialog, setShowTasksDialog] = useState(false);
   const [selectedPersonaName, setSelectedPersonaName] = useState('');
 
+  const isLoading = officeLoading || personasLoading || deptsLoading;
+
   const filteredPersonas = personas.filter(persona => {
     const matchesSearch = persona.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           persona.role.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDepartment = !selectedDepartment || persona.departmentId === selectedDepartment;
+    const matchesDepartment = !selectedDepartment || persona.department_id === selectedDepartment;
     return matchesSearch && matchesDepartment;
   });
 
-  const getDepartmentName = (deptId: string) => {
+  const getDepartmentName = (deptId: string | null) => {
+    if (!deptId) return 'Unassigned';
     return departments.find(d => d.id === deptId)?.name || 'Unknown';
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | null) => {
     switch (status) {
       case 'active': return 'success';
       case 'busy': return 'warning';
@@ -64,8 +70,8 @@ export default function Personas() {
       const result = await generatePersonaTasks({
         name: persona.name,
         role: persona.role,
-        department: getDepartmentName(persona.departmentId),
-        skills: persona.skills,
+        department: getDepartmentName(persona.department_id),
+        skills: persona.skills || [],
         workload: persona.status === 'busy' ? 'heavy' : 'normal',
       });
 
@@ -84,6 +90,14 @@ export default function Personas() {
       setGeneratingFor(null);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -110,7 +124,7 @@ export default function Personas() {
               className="pl-9 bg-card border-border"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
               variant={selectedDepartment === null ? 'default' : 'outline'}
               size="sm"
@@ -146,7 +160,7 @@ export default function Personas() {
                     <div className="flex items-center gap-3">
                       <div className="relative">
                         <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center text-lg font-semibold text-primary-foreground">
-                          {persona.avatar}
+                          {persona.avatar || '🤖'}
                         </div>
                         <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-card bg-${getStatusColor(persona.status)}`} />
                       </div>
@@ -184,26 +198,28 @@ export default function Personas() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Department</span>
-                      <span className="text-foreground">{getDepartmentName(persona.departmentId)}</span>
+                      <span className="text-foreground">{getDepartmentName(persona.department_id)}</span>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Status</span>
                       <Badge variant={getStatusColor(persona.status) as any}>
-                        {persona.status}
+                        {persona.status || 'idle'}
                       </Badge>
                     </div>
 
-                    <div className="pt-2 border-t border-border">
-                      <p className="text-xs text-muted-foreground mb-2">Skills</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {persona.skills.map((skill) => (
-                          <Badge key={skill} variant="outline" className="text-xs">
-                            {skill}
-                          </Badge>
-                        ))}
+                    {persona.skills && persona.skills.length > 0 && (
+                      <div className="pt-2 border-t border-border">
+                        <p className="text-xs text-muted-foreground mb-2">Skills</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {persona.skills.map((skill) => (
+                            <Badge key={skill} variant="outline" className="text-xs">
+                              {skill}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -223,6 +239,12 @@ export default function Personas() {
             </Card>
           </motion.div>
         </motion.div>
+
+        {filteredPersonas.length === 0 && !isLoading && (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">No personas found. Create your first persona to get started.</p>
+          </div>
+        )}
       </div>
 
       {/* Generated Tasks Dialog */}
