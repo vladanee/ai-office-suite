@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Plug, 
@@ -5,13 +6,16 @@ import {
   Check, 
   Plus,
   Settings,
-  Webhook
+  Webhook,
+  Copy,
+  CheckCircle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TopBar } from '@/components/layout/TopBar';
-
+import { getN8nWebhookUrl } from '@/lib/n8nWebhook';
+import { toast } from 'sonner';
 const integrations = [
   {
     id: 'n8n',
@@ -78,6 +82,15 @@ const itemVariants = {
 
 export default function Integrations() {
   const connectedCount = integrations.filter(i => i.connected).length;
+  const [copied, setCopied] = useState(false);
+  const webhookUrl = getN8nWebhookUrl();
+
+  const copyWebhookUrl = async () => {
+    await navigator.clipboard.writeText(webhookUrl);
+    setCopied(true);
+    toast.success('Webhook URL copied to clipboard');
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="min-h-screen">
@@ -160,22 +173,35 @@ export default function Integrations() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-secondary/50 rounded-lg">
-              <div>
-                <p className="text-sm text-muted-foreground">Endpoint</p>
-                <p className="font-mono text-sm text-foreground truncate">https://n8n.aioffice.io/webhook</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Last Sync</p>
-                <p className="text-sm text-foreground">2 minutes ago</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Status</p>
+              <div className="md:col-span-2">
+                <p className="text-sm text-muted-foreground mb-1">Inbound Webhook URL</p>
                 <div className="flex items-center gap-2">
+                  <code className="flex-1 font-mono text-xs text-foreground bg-background/50 px-3 py-2 rounded border border-border truncate">
+                    {webhookUrl}
+                  </code>
+                  <Button variant="outline" size="sm" onClick={copyWebhookUrl}>
+                    {copied ? <CheckCircle className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Status</p>
+                <div className="flex items-center gap-2 mt-2">
                   <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
                   <p className="text-sm text-success">Active</p>
                 </div>
+              </div>
+            </div>
+            <div className="p-4 bg-secondary/30 rounded-lg">
+              <p className="text-sm font-medium text-foreground mb-2">Supported Events</p>
+              <div className="flex flex-wrap gap-2">
+                {['workflow.started', 'workflow.completed', 'workflow.failed', 'node.executed', 'task.created', 'task.completed', 'persona.action'].map((event) => (
+                  <Badge key={event} variant="outline" className="font-mono text-xs">
+                    {event}
+                  </Badge>
+                ))}
               </div>
             </div>
           </CardContent>
