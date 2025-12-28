@@ -1,12 +1,20 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search, Filter, MoreVertical, UserPlus } from 'lucide-react';
+import { Plus, Search, MoreVertical, UserPlus, Sparkles, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { TopBar } from '@/components/layout/TopBar';
 import { useAppStore } from '@/store/appStore';
+import { generatePersonaTasks, GeneratedTask } from '@/lib/aiTaskGenerator';
+import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -25,6 +33,10 @@ export default function Personas() {
   const { personas, departments } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
+  const [generatingFor, setGeneratingFor] = useState<string | null>(null);
+  const [generatedTasks, setGeneratedTasks] = useState<GeneratedTask[]>([]);
+  const [showTasksDialog, setShowTasksDialog] = useState(false);
+  const [selectedPersonaName, setSelectedPersonaName] = useState('');
 
   const filteredPersonas = personas.filter(persona => {
     const matchesSearch = persona.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -43,6 +55,33 @@ export default function Personas() {
       case 'busy': return 'warning';
       case 'idle': return 'muted';
       default: return 'muted';
+    }
+  };
+
+  const handleGenerateTasks = async (persona: typeof personas[0]) => {
+    setGeneratingFor(persona.id);
+    try {
+      const result = await generatePersonaTasks({
+        name: persona.name,
+        role: persona.role,
+        department: getDepartmentName(persona.departmentId),
+        skills: persona.skills,
+        workload: persona.status === 'busy' ? 'heavy' : 'normal',
+      });
+
+      if (result.success && result.tasks) {
+        setGeneratedTasks(result.tasks);
+        setSelectedPersonaName(persona.name);
+        setShowTasksDialog(true);
+        toast.success(`Generated ${result.tasks.length} tasks for ${persona.name}`);
+      } else {
+        throw new Error(result.error || 'Failed to generate tasks');
+      }
+    } catch (error) {
+      console.error('Error generating tasks:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to generate tasks');
+    } finally {
+      setGeneratingFor(null);
     }
   };
 
@@ -120,6 +159,27 @@ export default function Personas() {
                       <MoreVertical className="w-4 h-4" />
                     </Button>
                   </div>
+                  
+                  {/* AI Generate Tasks Button */}
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full mb-3"
+                    onClick={() => handleGenerateTasks(persona)}
+                    disabled={generatingFor === persona.id}
+                  >
+                    {generatingFor === persona.id ? (
+                      <>
+                        <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3 h-3 mr-2" />
+                        Generate Tasks
+                      </>
+                    )}
+                  </Button>
 
                   <div className="space-y-3">
                     <div className="flex items-center justify-between text-sm">
@@ -164,6 +224,38 @@ export default function Personas() {
           </motion.div>
         </motion.div>
       </div>
+
+      {/* Generated Tasks Dialog */}
+      <Dialog open={showTasksDialog} onOpenChange={setShowTasksDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              Generated Tasks for {selectedPersonaName}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            {generatedTasks.map((task, index) => (
+              <Card key={index} className="p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <h4 className="font-semibold text-foreground">{task.title}</h4>
+                  <Badge variant={task.priority === 'high' ? 'destructive' : task.priority === 'medium' ? 'warning' : 'muted'}>
+                    {task.priority}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <span>⏱️ {task.estimated_hours}h</span>
+                  <span>🎯 {task.acceptance_criteria?.length || 0} criteria</span>
+                </div>
+                {task.suggested_approach && (
+                  <p className="text-xs text-primary mt-2 italic">💡 {task.suggested_approach}</p>
+                )}
+              </Card>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
