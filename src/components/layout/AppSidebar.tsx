@@ -19,7 +19,7 @@ import { useAppStore } from '@/store/appStore';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
-  { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/departments', icon: Building2, label: 'Departments' },
   { path: '/personas', icon: Users, label: 'Personas' },
   { path: '/workflows', icon: Workflow, label: 'Workflows' },
@@ -42,7 +42,7 @@ export function AppSidebar() {
     >
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
-        <Link to="/" className="flex items-center gap-3">
+        <Link to="/dashboard" className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center shadow-glow">
             <Sparkles className="w-5 h-5 text-primary-foreground" />
           </div>

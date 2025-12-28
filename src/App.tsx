@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
+import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import Personas from "./pages/Personas";
 import Departments from "./pages/Departments";
@@ -27,13 +28,17 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
+            
+            {/* Protected Routes */}
             <Route element={
               <ProtectedRoute>
                 <AppLayout />
               </ProtectedRoute>
             }>
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/departments" element={<Departments />} />
               <Route path="/personas" element={<Personas />} />
               <Route path="/workflows" element={<WorkflowBuilder />} />
