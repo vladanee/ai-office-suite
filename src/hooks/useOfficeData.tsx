@@ -91,30 +91,80 @@ export function useDepartments(officeId: string | undefined) {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchDepartments = async () => {
     if (!officeId) {
       setDepartments([]);
       setLoading(false);
       return;
     }
 
-    const fetchDepartments = async () => {
-      const { data, error } = await supabase
-        .from('departments')
-        .select('*')
-        .eq('office_id', officeId)
-        .order('name');
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('departments')
+      .select('*')
+      .eq('office_id', officeId)
+      .order('name');
 
-      if (!error && data) {
-        setDepartments(data);
-      }
-      setLoading(false);
-    };
+    if (!error && data) {
+      setDepartments(data);
+    }
+    setLoading(false);
+  };
 
+  useEffect(() => {
     fetchDepartments();
   }, [officeId]);
 
-  return { departments, loading };
+  const createDepartment = async (department: { name: string; description?: string; color?: string }) => {
+    if (!officeId) return { error: new Error('No office selected') };
+
+    const { data, error } = await supabase
+      .from('departments')
+      .insert({
+        ...department,
+        office_id: officeId,
+      })
+      .select()
+      .single();
+
+    if (!error && data) {
+      setDepartments(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+    }
+
+    return { data, error };
+  };
+
+  const updateDepartment = async (id: string, updates: { name?: string; description?: string; color?: string }) => {
+    const { data, error } = await supabase
+      .from('departments')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (!error && data) {
+      setDepartments(prev => 
+        prev.map(d => d.id === id ? data : d).sort((a, b) => a.name.localeCompare(b.name))
+      );
+    }
+
+    return { data, error };
+  };
+
+  const deleteDepartment = async (id: string) => {
+    const { error } = await supabase
+      .from('departments')
+      .delete()
+      .eq('id', id);
+
+    if (!error) {
+      setDepartments(prev => prev.filter(d => d.id !== id));
+    }
+
+    return { error };
+  };
+
+  return { departments, loading, createDepartment, updateDepartment, deleteDepartment, refetch: fetchDepartments };
 }
 
 export function usePersonas(officeId: string | undefined) {
