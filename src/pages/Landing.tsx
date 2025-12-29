@@ -107,7 +107,10 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
-      {/* Navigation */}
+      {/* Skip Link */}
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
       <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
@@ -138,10 +141,13 @@ export default function Landing() {
         </div>
       </nav>
 
+
       {/* Hero Section */}
       <motion.section 
+        id="main-content"
         style={{ opacity: heroOpacity, scale: heroScale }}
         className="relative pt-32 pb-20 md:pt-40 md:pb-32 overflow-hidden"
+        aria-labelledby="hero-heading"
       >
         {/* Background Effects */}
         <div className="absolute inset-0 pointer-events-none">
@@ -175,6 +181,7 @@ export default function Landing() {
 
             {/* Headline */}
             <motion.h1 
+              id="hero-heading"
               variants={fadeInUp}
               className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6"
             >
@@ -599,11 +606,11 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="py-16 border-t border-border/50">
+      <footer className="py-16 border-t border-border/50" role="contentinfo">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
             <div className="col-span-2">
-              <Link to="/" className="flex items-center gap-2 mb-4">
+              <Link to="/" className="flex items-center gap-2 mb-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg w-fit">
                 <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center">
                   <Sparkles className="w-5 h-5 text-primary-foreground" />
                 </div>
@@ -621,10 +628,10 @@ export default function Landing() {
             ].map((section) => (
               <div key={section.title}>
                 <h4 className="font-semibold mb-4">{section.title}</h4>
-                <ul className="space-y-2">
+                <ul className="space-y-2" role="list">
                   {section.links.map((link) => (
                     <li key={link}>
-                      <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                      <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:text-foreground focus-visible:underline">
                         {link}
                       </a>
                     </li>
@@ -636,11 +643,16 @@ export default function Landing() {
           
           <div className="pt-8 border-t border-border/50 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">
-              © 2024 AI Office. All rights reserved.
+              © {new Date().getFullYear()} AI Office. All rights reserved.
             </p>
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-6" role="list" aria-label="Social links">
               {['Twitter', 'LinkedIn', 'GitHub'].map((social) => (
-                <a key={social} href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <a 
+                  key={social} 
+                  href="#" 
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:text-foreground focus-visible:underline"
+                  aria-label={`Follow us on ${social}`}
+                >
                   {social}
                 </a>
               ))}
