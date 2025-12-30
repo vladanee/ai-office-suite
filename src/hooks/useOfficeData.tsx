@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import { Tables } from '@/integrations/supabase/types';
+import { Tables, Json } from '@/integrations/supabase/types';
 
 type Office = Tables<'offices'>;
 type Department = Tables<'departments'>;
@@ -267,30 +267,106 @@ export function useWorkflows(officeId: string | undefined) {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchWorkflows = async () => {
     if (!officeId) {
       setWorkflows([]);
       setLoading(false);
       return;
     }
 
-    const fetchWorkflows = async () => {
-      const { data, error } = await supabase
-        .from('workflows')
-        .select('*')
-        .eq('office_id', officeId)
-        .order('updated_at', { ascending: false });
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('workflows')
+      .select('*')
+      .eq('office_id', officeId)
+      .order('updated_at', { ascending: false });
 
-      if (!error && data) {
-        setWorkflows(data);
-      }
-      setLoading(false);
-    };
+    if (!error && data) {
+      setWorkflows(data);
+    }
+    setLoading(false);
+  };
 
+  useEffect(() => {
     fetchWorkflows();
   }, [officeId]);
 
-  return { workflows, loading };
+  const createWorkflow = async (workflow: { 
+    name: string; 
+    description?: string;
+    nodes?: Json;
+    edges?: Json;
+    is_active?: boolean;
+  }) => {
+    if (!officeId) return { data: null, error: new Error('No office selected') };
+
+    const { data, error } = await supabase
+      .from('workflows')
+      .insert({
+        name: workflow.name,
+        description: workflow.description,
+        office_id: officeId,
+        nodes: workflow.nodes || [],
+        edges: workflow.edges || [],
+        is_active: workflow.is_active,
+      })
+      .select()
+      .single();
+
+    if (!error && data) {
+      setWorkflows(prev => [data, ...prev]);
+    }
+
+    return { data, error };
+  };
+
+  const updateWorkflow = async (id: string, updates: { 
+    name?: string; 
+    description?: string;
+    nodes?: Json;
+    edges?: Json;
+    is_active?: boolean;
+  }) => {
+    const { data, error } = await supabase
+      .from('workflows')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (!error && data) {
+      setWorkflows(prev => 
+        prev.map(w => w.id === id ? data : w)
+      );
+    }
+
+    return { data, error };
+  };
+
+  const deleteWorkflow = async (id: string) => {
+    const { error } = await supabase
+      .from('workflows')
+      .delete()
+      .eq('id', id);
+
+    if (!error) {
+      setWorkflows(prev => prev.filter(w => w.id !== id));
+    }
+
+    return { error };
+  };
+
+  const getWorkflow = async (id: string) => {
+    const { data, error } = await supabase
+      .from('workflows')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    return { data, error };
+  };
+
+  return { workflows, loading, createWorkflow, updateWorkflow, deleteWorkflow, getWorkflow, refetch: fetchWorkflows };
 }
 
 export function useWorkflowRuns(officeId: string | undefined, limit = 10) {
