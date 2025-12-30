@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search, MoreVertical, UserPlus, Sparkles, Loader2 } from 'lucide-react';
+import { Plus, Search, MoreVertical, UserPlus, Sparkles, Loader2, Pencil, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +14,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useCurrentOffice, usePersonas, useDepartments } from '@/hooks/useOfficeData';
+import { PersonaDialog } from '@/components/personas/PersonaDialog';
+import { DeletePersonaDialog } from '@/components/personas/DeletePersonaDialog';
+import { Tables } from '@/integrations/supabase/types';
+
+type Persona = Tables<'personas'>;
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -31,7 +42,7 @@ const itemVariants = {
 
 export default function Personas() {
   const { currentOffice, loading: officeLoading } = useCurrentOffice();
-  const { personas, loading: personasLoading } = usePersonas(currentOffice?.id);
+  const { personas, loading: personasLoading, createPersona, updatePersona, deletePersona } = usePersonas(currentOffice?.id);
   const { departments, loading: deptsLoading } = useDepartments(currentOffice?.id);
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,6 +51,12 @@ export default function Personas() {
   const [generatedTasks, setGeneratedTasks] = useState<GeneratedTask[]>([]);
   const [showTasksDialog, setShowTasksDialog] = useState(false);
   const [selectedPersonaName, setSelectedPersonaName] = useState('');
+  
+  // CRUD state
+  const [personaDialogOpen, setPersonaDialogOpen] = useState(false);
+  const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [personaToDelete, setPersonaToDelete] = useState<Persona | null>(null);
 
   const isLoading = officeLoading || personasLoading || deptsLoading;
 
@@ -64,7 +81,7 @@ export default function Personas() {
     }
   };
 
-  const handleGenerateTasks = async (persona: typeof personas[0]) => {
+  const handleGenerateTasks = async (persona: Persona) => {
     setGeneratingFor(persona.id);
     try {
       const result = await generatePersonaTasks({
@@ -91,6 +108,61 @@ export default function Personas() {
     }
   };
 
+  const handleCreatePersona = () => {
+    setEditingPersona(null);
+    setPersonaDialogOpen(true);
+  };
+
+  const handleEditPersona = (persona: Persona) => {
+    setEditingPersona(persona);
+    setPersonaDialogOpen(true);
+  };
+
+  const handleDeleteClick = (persona: Persona) => {
+    setPersonaToDelete(persona);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleSavePersona = async (data: {
+    name: string;
+    role: string;
+    avatar?: string;
+    department_id?: string | null;
+    skills?: string[];
+    status?: 'active' | 'idle' | 'busy';
+    system_prompt?: string;
+  }): Promise<{ error: Error | null }> => {
+    if (editingPersona) {
+      const { error } = await updatePersona(editingPersona.id, data);
+      if (error) {
+        toast.error('Failed to update persona');
+        return { error: error as Error };
+      }
+      toast.success('Persona updated successfully');
+      return { error: null };
+    } else {
+      const { error } = await createPersona(data);
+      if (error) {
+        toast.error('Failed to create persona');
+        return { error: error as Error };
+      }
+      toast.success('Persona created successfully');
+      return { error: null };
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!personaToDelete) return { error: new Error('No persona selected') };
+    
+    const { error } = await deletePersona(personaToDelete.id);
+    if (error) {
+      toast.error('Failed to delete persona');
+      return { error };
+    }
+    toast.success('Persona deleted successfully');
+    return { error: null };
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -105,7 +177,7 @@ export default function Personas() {
         title="Personas" 
         subtitle="AI-powered team members for your workflows"
         actions={
-          <Button>
+          <Button onClick={handleCreatePersona}>
             <UserPlus className="w-4 h-4 mr-2" />
             Add Persona
           </Button>
@@ -154,7 +226,7 @@ export default function Personas() {
         >
           {filteredPersonas.map((persona) => (
             <motion.div key={persona.id} variants={itemVariants}>
-              <Card className="group hover:border-primary/30 transition-all duration-200 hover:shadow-glow cursor-pointer">
+              <Card className="group hover:border-primary/30 transition-all duration-200 hover:shadow-glow">
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -169,9 +241,26 @@ export default function Personas() {
                         <p className="text-sm text-muted-foreground">{persona.role}</p>
                       </div>
                     </div>
-                    <Button variant="ghost" size="icon-sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon-sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEditPersona(persona)}>
+                          <Pencil className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleDeleteClick(persona)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                   
                   {/* AI Generate Tasks Button */}
@@ -228,7 +317,10 @@ export default function Personas() {
 
           {/* Add New Card */}
           <motion.div variants={itemVariants}>
-            <Card className="border-dashed border-2 border-border hover:border-primary/50 transition-colors cursor-pointer group h-full min-h-[240px]">
+            <Card 
+              className="border-dashed border-2 border-border hover:border-primary/50 transition-colors cursor-pointer group h-full min-h-[240px]"
+              onClick={handleCreatePersona}
+            >
               <CardContent className="p-5 flex flex-col items-center justify-center h-full text-center">
                 <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center mb-3 group-hover:bg-primary/20 transition-colors">
                   <Plus className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -278,6 +370,23 @@ export default function Personas() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Persona Create/Edit Dialog */}
+      <PersonaDialog
+        open={personaDialogOpen}
+        onOpenChange={setPersonaDialogOpen}
+        persona={editingPersona}
+        departments={departments}
+        onSave={handleSavePersona}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <DeletePersonaDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        persona={personaToDelete}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }
