@@ -171,30 +171,96 @@ export function usePersonas(officeId: string | undefined) {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchPersonas = async () => {
     if (!officeId) {
       setPersonas([]);
       setLoading(false);
       return;
     }
 
-    const fetchPersonas = async () => {
-      const { data, error } = await supabase
-        .from('personas')
-        .select('*')
-        .eq('office_id', officeId)
-        .order('name');
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('personas')
+      .select('*')
+      .eq('office_id', officeId)
+      .order('name');
 
-      if (!error && data) {
-        setPersonas(data);
-      }
-      setLoading(false);
-    };
+    if (!error && data) {
+      setPersonas(data);
+    }
+    setLoading(false);
+  };
 
+  useEffect(() => {
     fetchPersonas();
   }, [officeId]);
 
-  return { personas, loading };
+  const createPersona = async (persona: { 
+    name: string; 
+    role: string; 
+    avatar?: string;
+    department_id?: string | null;
+    skills?: string[];
+    status?: string;
+    system_prompt?: string;
+  }) => {
+    if (!officeId) return { error: new Error('No office selected') };
+
+    const { data, error } = await supabase
+      .from('personas')
+      .insert({
+        ...persona,
+        office_id: officeId,
+      })
+      .select()
+      .single();
+
+    if (!error && data) {
+      setPersonas(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+    }
+
+    return { data, error };
+  };
+
+  const updatePersona = async (id: string, updates: { 
+    name?: string; 
+    role?: string; 
+    avatar?: string;
+    department_id?: string | null;
+    skills?: string[];
+    status?: string;
+    system_prompt?: string;
+  }) => {
+    const { data, error } = await supabase
+      .from('personas')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (!error && data) {
+      setPersonas(prev => 
+        prev.map(p => p.id === id ? data : p).sort((a, b) => a.name.localeCompare(b.name))
+      );
+    }
+
+    return { data, error };
+  };
+
+  const deletePersona = async (id: string) => {
+    const { error } = await supabase
+      .from('personas')
+      .delete()
+      .eq('id', id);
+
+    if (!error) {
+      setPersonas(prev => prev.filter(p => p.id !== id));
+    }
+
+    return { error };
+  };
+
+  return { personas, loading, createPersona, updatePersona, deletePersona, refetch: fetchPersonas };
 }
 
 export function useWorkflows(officeId: string | undefined) {
