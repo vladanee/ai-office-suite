@@ -9,9 +9,31 @@ import { Separator } from '@/components/ui/separator';
 interface PropertyPanelProps {
   node: Node;
   onClose: () => void;
+  onUpdate?: (nodeId: string, data: any) => void;
+  onDelete?: (nodeId: string) => void;
 }
 
-export function PropertyPanel({ node, onClose }: PropertyPanelProps) {
+export function PropertyPanel({ node, onClose, onUpdate, onDelete }: PropertyPanelProps) {
+  const handleLabelChange = (value: string) => {
+    onUpdate?.(node.id, { label: value });
+  };
+
+  const handleDescriptionChange = (value: string) => {
+    onUpdate?.(node.id, { description: value });
+  };
+
+  const handleConditionChange = (value: string) => {
+    onUpdate?.(node.id, { condition: value });
+  };
+
+  const handleUrlChange = (value: string) => {
+    onUpdate?.(node.id, { url: value });
+  };
+
+  const handleDelete = () => {
+    onDelete?.(node.id);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -53,6 +75,7 @@ export function PropertyPanel({ node, onClose }: PropertyPanelProps) {
           <Input
             id="node-label"
             value={node.data?.label || ''}
+            onChange={(e) => handleLabelChange(e.target.value)}
             placeholder="Enter node label"
             className="bg-card"
           />
@@ -64,6 +87,7 @@ export function PropertyPanel({ node, onClose }: PropertyPanelProps) {
             <Textarea
               id="node-description"
               value={node.data?.description || ''}
+              onChange={(e) => handleDescriptionChange(e.target.value)}
               placeholder="Enter description"
               className="bg-card resize-none"
               rows={3}
@@ -77,6 +101,7 @@ export function PropertyPanel({ node, onClose }: PropertyPanelProps) {
             <Input
               id="node-condition"
               value={node.data?.condition || ''}
+              onChange={(e) => handleConditionChange(e.target.value)}
               placeholder="e.g., quality >= 80"
               className="bg-card font-mono text-sm"
             />
@@ -89,6 +114,7 @@ export function PropertyPanel({ node, onClose }: PropertyPanelProps) {
             <Input
               id="node-url"
               value={node.data?.url || ''}
+              onChange={(e) => handleUrlChange(e.target.value)}
               placeholder="https://n8n.example.com/webhook"
               className="bg-card font-mono text-sm"
             />
@@ -122,10 +148,12 @@ export function PropertyPanel({ node, onClose }: PropertyPanelProps) {
 
       <Separator />
 
-      <Button variant="destructive" className="w-full" size="sm">
-        <Trash2 className="w-4 h-4 mr-2" />
-        Delete Node
-      </Button>
+      {node.type !== 'start' && node.type !== 'end' && (
+        <Button variant="destructive" className="w-full" size="sm" onClick={handleDelete}>
+          <Trash2 className="w-4 h-4 mr-2" />
+          Delete Node
+        </Button>
+      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import ReactFlow, {
   Node,
   Edge,
@@ -11,18 +12,19 @@ import ReactFlow, {
   Connection,
   BackgroundVariant,
   Panel,
+  ReactFlowInstance,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { motion } from 'framer-motion';
 import { 
-  Plus, 
   Play, 
   Save, 
   Undo, 
   Redo, 
-  Maximize2,
   Settings2,
-  Workflow as WorkflowIcon
+  ArrowLeft,
+  Loader2,
+  CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TopBar } from '@/components/layout/TopBar';
@@ -33,6 +35,12 @@ import { ConditionalNode } from '@/components/workflow/nodes/ConditionalNode';
 import { WebhookNode } from '@/components/workflow/nodes/WebhookNode';
 import { NodePalette } from '@/components/workflow/NodePalette';
 import { PropertyPanel } from '@/components/workflow/PropertyPanel';
+import { useCurrentOffice, useWorkflows } from '@/hooks/useOfficeData';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { Tables } from '@/integrations/supabase/types';
+
+type Workflow = Tables<'workflows'>;
 
 const nodeTypes = {
   start: StartNode,
@@ -42,7 +50,7 @@ const nodeTypes = {
   webhook: WebhookNode,
 };
 
-const initialNodes: Node[] = [
+const defaultNodes: Node[] = [
   {
     id: 'start-1',
     type: 'start',
@@ -50,51 +58,90 @@ const initialNodes: Node[] = [
     data: { label: 'Start' },
   },
   {
-    id: 'task-1',
-    type: 'task',
-    position: { x: 250, y: 180 },
-    data: { label: 'Generate Tasks', description: 'AI generates task list' },
-  },
-  {
-    id: 'task-2',
-    type: 'task',
-    position: { x: 250, y: 320 },
-    data: { label: 'Assign to Persona', description: 'Route to appropriate persona' },
-  },
-  {
-    id: 'conditional-1',
-    type: 'conditional',
-    position: { x: 250, y: 460 },
-    data: { label: 'QA Check', condition: 'quality >= 80' },
-  },
-  {
-    id: 'webhook-1',
-    type: 'webhook',
-    position: { x: 450, y: 600 },
-    data: { label: 'Send to n8n', url: 'https://n8n.example.com/webhook' },
-  },
-  {
     id: 'end-1',
     type: 'end',
-    position: { x: 250, y: 740 },
+    position: { x: 250, y: 200 },
     data: { label: 'End' },
   },
 ];
 
-const initialEdges: Edge[] = [
-  { id: 'e1-2', source: 'start-1', target: 'task-1', animated: true },
-  { id: 'e2-3', source: 'task-1', target: 'task-2' },
-  { id: 'e3-4', source: 'task-2', target: 'conditional-1' },
-  { id: 'e4-5', source: 'conditional-1', target: 'webhook-1', label: 'Pass' },
-  { id: 'e4-6', source: 'conditional-1', target: 'end-1', label: 'Fail' },
-  { id: 'e5-6', source: 'webhook-1', target: 'end-1' },
+const defaultEdges: Edge[] = [
+  { id: 'e-start-end', source: 'start-1', target: 'end-1', animated: true },
 ];
 
 export default function WorkflowBuilder() {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { currentOffice } = useCurrentOffice();
+  const { updateWorkflow } = useWorkflows(currentOffice?.id);
+  
+  const [workflow, setWorkflow] = useState<Workflow | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  
+  const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [showPalette, setShowPalette] = useState(true);
+  
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
+
+  // Load workflow
+  useEffect(() => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+
+    const loadWorkflow = async () => {
+      const { data, error } = await supabase
+        .from('workflows')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (error || !data) {
+        toast.error('Workflow not found');
+        navigate('/workflows');
+        return;
+      }
+
+      setWorkflow(data);
+      
+      // Load nodes and edges from workflow
+      const loadedNodes = (data.nodes as unknown as Node[]) || defaultNodes;
+      const loadedEdges = (data.edges as unknown as Edge[]) || defaultEdges;
+      
+      setNodes(loadedNodes);
+      setEdges(loadedEdges);
+      setLoading(false);
+    };
+
+    loadWorkflow();
+  }, [id, navigate, setNodes, setEdges]);
+
+  const handleSave = async () => {
+    if (!workflow || !id) return;
+
+    setSaving(true);
+    
+    const { error } = await updateWorkflow(id, {
+      nodes: nodes as any,
+      edges: edges as any,
+    });
+
+    setSaving(false);
+
+    if (error) {
+      toast.error('Failed to save workflow');
+    } else {
+      setSaved(true);
+      toast.success('Workflow saved');
+      setTimeout(() => setSaved(false), 2000);
+    }
+  };
 
   const onConnect = useCallback(
     (connection: Connection) => setEdges((eds) => addEdge(connection, eds)),
@@ -119,43 +166,79 @@ export default function WorkflowBuilder() {
       event.preventDefault();
 
       const type = event.dataTransfer.getData('application/reactflow');
-      if (!type) return;
+      if (!type || !reactFlowInstance || !reactFlowWrapper.current) return;
 
-      const position = {
-        x: event.clientX - 300,
-        y: event.clientY - 100,
-      };
+      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
+      const position = reactFlowInstance.screenToFlowPosition({
+        x: event.clientX - reactFlowBounds.left,
+        y: event.clientY - reactFlowBounds.top,
+      });
 
       const newNode: Node = {
         id: `${type}-${Date.now()}`,
         type,
         position,
-        data: { label: `New ${type}` },
+        data: { 
+          label: type.charAt(0).toUpperCase() + type.slice(1),
+          ...(type === 'task' && { description: 'Enter task description' }),
+          ...(type === 'conditional' && { condition: '' }),
+          ...(type === 'webhook' && { url: '' }),
+        },
       };
 
       setNodes((nds) => nds.concat(newNode));
     },
-    [setNodes]
+    [setNodes, reactFlowInstance]
   );
+
+  const handleUpdateNode = (nodeId: string, data: any) => {
+    setNodes((nds) =>
+      nds.map((node) =>
+        node.id === nodeId ? { ...node, data: { ...node.data, ...data } } : node
+      )
+    );
+    // Update selected node as well
+    if (selectedNode?.id === nodeId) {
+      setSelectedNode((prev) => prev ? { ...prev, data: { ...prev.data, ...data } } : null);
+    }
+  };
+
+  const handleDeleteNode = (nodeId: string) => {
+    setNodes((nds) => nds.filter((node) => node.id !== nodeId));
+    setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
+    setSelectedNode(null);
+  };
+
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col">
       <TopBar 
-        title="Workflow Builder" 
-        subtitle="Design your automation workflows"
+        title={workflow?.name || 'Workflow Builder'}
+        subtitle={workflow?.description || 'Design your automation workflows'}
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
-              <Undo className="w-4 h-4" />
+            <Button variant="outline" size="sm" onClick={() => navigate('/workflows')}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
             </Button>
-            <Button variant="outline" size="sm">
-              <Redo className="w-4 h-4" />
+            <Button variant="outline" size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : saved ? (
+                <CheckCircle2 className="w-4 h-4 mr-2 text-success" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              {saving ? 'Saving...' : saved ? 'Saved' : 'Save'}
             </Button>
-            <Button variant="outline" size="sm">
-              <Save className="w-4 h-4 mr-2" />
-              Save
-            </Button>
-            <Button variant="success" size="sm">
+            <Button variant="success" size="sm" disabled>
               <Play className="w-4 h-4 mr-2" />
               Run
             </Button>
@@ -176,7 +259,7 @@ export default function WorkflowBuilder() {
         )}
 
         {/* Canvas */}
-        <div className="flex-1 relative">
+        <div className="flex-1 relative" ref={reactFlowWrapper}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -187,6 +270,7 @@ export default function WorkflowBuilder() {
             onPaneClick={onPaneClick}
             onDragOver={onDragOver}
             onDrop={onDrop}
+            onInit={setReactFlowInstance}
             nodeTypes={nodeTypes}
             fitView
             snapToGrid
@@ -222,7 +306,12 @@ export default function WorkflowBuilder() {
             animate={{ x: 0 }}
             className="w-80 border-l border-border bg-card p-4 overflow-y-auto"
           >
-            <PropertyPanel node={selectedNode} onClose={() => setSelectedNode(null)} />
+            <PropertyPanel 
+              node={selectedNode} 
+              onClose={() => setSelectedNode(null)}
+              onUpdate={handleUpdateNode}
+              onDelete={handleDeleteNode}
+            />
           </motion.div>
         )}
       </div>
