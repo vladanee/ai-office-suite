@@ -14,6 +14,19 @@ interface WorkflowNode {
     description?: string;
     condition?: string;
     url?: string;
+    // Delay node
+    delay?: number;
+    // Loop node
+    iterations?: number;
+    collection?: string;
+    // Email node
+    to?: string;
+    subject?: string;
+    body?: string;
+    // Transform node
+    transform?: string;
+    inputVar?: string;
+    outputVar?: string;
   };
   position: { x: number; y: number };
 }
@@ -158,6 +171,10 @@ serve(async (req) => {
               break;
 
             case "task":
+            case "assignment":
+            case "qa":
+            case "kpi":
+            case "report":
               const taskResult = await executeTask(currentNode, context);
               context.results[currentNodeId] = taskResult;
               processedCount++;
@@ -172,6 +189,31 @@ serve(async (req) => {
             case "webhook":
               const webhookResult = await executeWebhook(currentNode, context);
               context.results[currentNodeId] = webhookResult;
+              processedCount++;
+              break;
+
+            case "delay":
+              const delayResult = await executeDelay(currentNode, context);
+              context.results[currentNodeId] = delayResult;
+              processedCount++;
+              break;
+
+            case "loop":
+              const loopResult = await executeLoop(currentNode, context, nodes, edges, adjacency, visited);
+              context.results[currentNodeId] = loopResult;
+              nextHandleId = "done"; // Continue to done path after loop completes
+              processedCount++;
+              break;
+
+            case "email":
+              const emailResult = await executeEmail(currentNode, context);
+              context.results[currentNodeId] = emailResult;
+              processedCount++;
+              break;
+
+            case "transform":
+              const transformResult = executeTransform(currentNode, context);
+              context.results[currentNodeId] = transformResult;
               processedCount++;
               break;
 
@@ -438,6 +480,171 @@ async function executeWebhook(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Webhook failed",
+    };
+  }
+}
+
+async function executeDelay(
+  node: WorkflowNode,
+  _context: ExecutionContext
+): Promise<unknown> {
+  const delay = node.data.delay || 5;
+  console.log(`Executing delay: ${delay} seconds`);
+
+  await new Promise((resolve) => setTimeout(resolve, delay * 1000));
+
+  return {
+    success: true,
+    delayedFor: delay,
+    completedAt: new Date().toISOString(),
+  };
+}
+
+async function executeLoop(
+  node: WorkflowNode,
+  context: ExecutionContext,
+  _nodes: WorkflowNode[],
+  _edges: WorkflowEdge[],
+  _adjacency: Map<string, WorkflowEdge[]>,
+  _visited: Set<string>
+): Promise<unknown> {
+  const { iterations = 3, collection } = node.data;
+  console.log(`Executing loop: ${iterations} iterations`);
+
+  const results: unknown[] = [];
+  let items: unknown[] = [];
+
+  // If collection is specified, try to get it from context
+  if (collection && collection in context.variables) {
+    const collectionValue = context.variables[collection];
+    if (Array.isArray(collectionValue)) {
+      items = collectionValue;
+    }
+  }
+
+  const loopCount = items.length > 0 ? items.length : iterations;
+
+  for (let i = 0; i < loopCount; i++) {
+    const iterationResult = {
+      index: i,
+      item: items[i] || null,
+      timestamp: new Date().toISOString(),
+    };
+    results.push(iterationResult);
+
+    // Store current iteration in context
+    context.variables["_loopIndex"] = i;
+    context.variables["_loopItem"] = items[i] || null;
+  }
+
+  return {
+    success: true,
+    iterations: loopCount,
+    results,
+  };
+}
+
+async function executeEmail(
+  node: WorkflowNode,
+  context: ExecutionContext
+): Promise<unknown> {
+  const { to, subject, body } = node.data;
+  console.log(`Executing email: to=${to}, subject=${subject}`);
+
+  if (!to) {
+    return { success: false, error: "No recipient configured" };
+  }
+
+  // Replace variables in subject and body
+  let processedSubject = subject || "Workflow Notification";
+  let processedBody = body || "This is an automated notification from your workflow.";
+
+  // Simple variable replacement
+  for (const [key, value] of Object.entries(context.variables)) {
+    const placeholder = `{{${key}}}`;
+    if (typeof value === "string" || typeof value === "number") {
+      processedSubject = processedSubject.replace(new RegExp(placeholder, "g"), String(value));
+      processedBody = processedBody.replace(new RegExp(placeholder, "g"), String(value));
+    }
+  }
+
+  // Note: Actual email sending would require Resend or similar service
+  // For now, we log and return success to demonstrate the flow
+  console.log(`Would send email to: ${to}`);
+  console.log(`Subject: ${processedSubject}`);
+  console.log(`Body: ${processedBody}`);
+
+  return {
+    success: true,
+    to,
+    subject: processedSubject,
+    body: processedBody,
+    sentAt: new Date().toISOString(),
+    note: "Email simulation - configure Resend for actual sending",
+  };
+}
+
+function executeTransform(
+  node: WorkflowNode,
+  context: ExecutionContext
+): unknown {
+  const { transform, inputVar, outputVar } = node.data;
+  console.log(`Executing transform: ${transform}`);
+
+  if (!transform) {
+    return { success: false, error: "No transform expression configured" };
+  }
+
+  try {
+    // Get input data
+    let inputData: unknown = context.variables;
+    if (inputVar && inputVar in context.variables) {
+      inputData = context.variables[inputVar];
+    }
+
+    // Simple transforms (safe evaluation)
+    let result: unknown;
+    const transformLower = transform.toLowerCase().trim();
+
+    if (transformLower === "uppercase" && typeof inputData === "string") {
+      result = inputData.toUpperCase();
+    } else if (transformLower === "lowercase" && typeof inputData === "string") {
+      result = inputData.toLowerCase();
+    } else if (transformLower === "length" && (typeof inputData === "string" || Array.isArray(inputData))) {
+      result = inputData.length;
+    } else if (transformLower === "json" || transformLower === "stringify") {
+      result = JSON.stringify(inputData);
+    } else if (transformLower === "parse" && typeof inputData === "string") {
+      result = JSON.parse(inputData);
+    } else if (transformLower === "keys" && typeof inputData === "object" && inputData !== null) {
+      result = Object.keys(inputData as object);
+    } else if (transformLower === "values" && typeof inputData === "object" && inputData !== null) {
+      result = Object.values(inputData as object);
+    } else if (transformLower.startsWith("get:") && typeof inputData === "object" && inputData !== null) {
+      const key = transform.slice(4).trim();
+      result = (inputData as Record<string, unknown>)[key];
+    } else {
+      // For complex transforms, we just pass through with a note
+      result = inputData;
+      console.log(`Complex transform not evaluated: ${transform}`);
+    }
+
+    // Store result in output variable
+    if (outputVar) {
+      context.variables[outputVar] = result;
+    }
+
+    return {
+      success: true,
+      input: inputData,
+      output: result,
+      transform,
+    };
+  } catch (error) {
+    console.error(`Transform error: ${error}`);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Transform failed",
     };
   }
 }

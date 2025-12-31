@@ -7,7 +7,11 @@ import {
   Users,
   ClipboardCheck,
   BarChart3,
-  FileText
+  FileText,
+  Timer,
+  Repeat,
+  Mail,
+  Shuffle
 } from 'lucide-react';
 
 const nodeCategories = [
@@ -17,6 +21,8 @@ const nodeCategories = [
       { type: 'start', label: 'Start', icon: Play, color: 'success', description: 'Workflow trigger point' },
       { type: 'end', label: 'End', icon: StopCircle, color: 'destructive', description: 'Workflow completion' },
       { type: 'conditional', label: 'Condition', icon: GitBranch, color: 'warning', description: 'Branch based on logic' },
+      { type: 'delay', label: 'Delay', icon: Timer, color: 'warning', description: 'Wait before next step' },
+      { type: 'loop', label: 'Loop', icon: Repeat, color: 'accent', description: 'Iterate over items' },
     ],
   },
   {
@@ -31,6 +37,8 @@ const nodeCategories = [
     name: 'Data & Integration',
     nodes: [
       { type: 'webhook', label: 'Webhook', icon: Webhook, color: 'accent', description: 'n8n integration' },
+      { type: 'transform', label: 'Transform', icon: Shuffle, color: 'primary', description: 'Transform data' },
+      { type: 'email', label: 'Email', icon: Mail, color: 'destructive', description: 'Send notification' },
       { type: 'kpi', label: 'KPI Score', icon: BarChart3, color: 'primary', description: 'Calculate KPIs' },
       { type: 'report', label: 'Report', icon: FileText, color: 'muted', description: 'Generate report' },
     ],

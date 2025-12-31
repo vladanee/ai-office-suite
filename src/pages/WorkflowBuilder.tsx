@@ -33,6 +33,10 @@ import { TaskNode } from '@/components/workflow/nodes/TaskNode';
 import { EndNode } from '@/components/workflow/nodes/EndNode';
 import { ConditionalNode } from '@/components/workflow/nodes/ConditionalNode';
 import { WebhookNode } from '@/components/workflow/nodes/WebhookNode';
+import { DelayNode } from '@/components/workflow/nodes/DelayNode';
+import { LoopNode } from '@/components/workflow/nodes/LoopNode';
+import { EmailNode } from '@/components/workflow/nodes/EmailNode';
+import { TransformNode } from '@/components/workflow/nodes/TransformNode';
 import { NodePalette } from '@/components/workflow/NodePalette';
 import { PropertyPanel } from '@/components/workflow/PropertyPanel';
 import { useCurrentOffice, useWorkflows } from '@/hooks/useOfficeData';
@@ -48,6 +52,15 @@ const nodeTypes = {
   end: EndNode,
   conditional: ConditionalNode,
   webhook: WebhookNode,
+  delay: DelayNode,
+  loop: LoopNode,
+  email: EmailNode,
+  transform: TransformNode,
+  // Fallback to task for undefined types
+  assignment: TaskNode,
+  qa: TaskNode,
+  kpi: TaskNode,
+  report: TaskNode,
 };
 
 const defaultNodes: Node[] = [
@@ -174,15 +187,27 @@ export default function WorkflowBuilder() {
         y: event.clientY - reactFlowBounds.top,
       });
 
+      const nodeDataDefaults: Record<string, Record<string, any>> = {
+        task: { description: '' },
+        conditional: { condition: '' },
+        webhook: { url: '' },
+        delay: { delay: 5 },
+        loop: { iterations: 3, collection: '' },
+        email: { to: '', subject: '', body: '' },
+        transform: { transform: '', inputVar: '', outputVar: '' },
+        assignment: { description: '' },
+        qa: { description: '' },
+        kpi: { description: '' },
+        report: { description: '' },
+      };
+
       const newNode: Node = {
         id: `${type}-${Date.now()}`,
         type,
         position,
         data: { 
           label: type.charAt(0).toUpperCase() + type.slice(1),
-          ...(type === 'task' && { description: 'Enter task description' }),
-          ...(type === 'conditional' && { condition: '' }),
-          ...(type === 'webhook' && { url: '' }),
+          ...(nodeDataDefaults[type] || {}),
         },
       };
 
