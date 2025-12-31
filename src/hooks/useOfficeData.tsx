@@ -369,35 +369,40 @@ export function useWorkflows(officeId: string | undefined) {
   return { workflows, loading, createWorkflow, updateWorkflow, deleteWorkflow, getWorkflow, refetch: fetchWorkflows };
 }
 
-export function useWorkflowRuns(officeId: string | undefined, limit = 10) {
-  const [runs, setRuns] = useState<WorkflowRun[]>([]);
+export type WorkflowRunWithWorkflow = WorkflowRun & {
+  workflow: { name: string } | null;
+};
+
+export function useWorkflowRuns(officeId: string | undefined, limit = 50) {
+  const [runs, setRuns] = useState<WorkflowRunWithWorkflow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchRuns = async () => {
     if (!officeId) {
       setRuns([]);
       setLoading(false);
       return;
     }
 
-    const fetchRuns = async () => {
-      const { data, error } = await supabase
-        .from('workflow_runs')
-        .select('*')
-        .eq('office_id', officeId)
-        .order('created_at', { ascending: false })
-        .limit(limit);
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('workflow_runs')
+      .select('*, workflow:workflows(name)')
+      .eq('office_id', officeId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
-      if (!error && data) {
-        setRuns(data);
-      }
-      setLoading(false);
-    };
+    if (!error && data) {
+      setRuns(data as WorkflowRunWithWorkflow[]);
+    }
+    setLoading(false);
+  };
 
+  useEffect(() => {
     fetchRuns();
   }, [officeId, limit]);
 
-  return { runs, loading };
+  return { runs, loading, refetch: fetchRuns };
 }
 
 export function useDashboardStats(officeId: string | undefined) {
