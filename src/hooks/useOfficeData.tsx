@@ -402,7 +402,22 @@ export function useWorkflowRuns(officeId: string | undefined, limit = 50) {
     fetchRuns();
   }, [officeId, limit]);
 
-  return { runs, loading, refetch: fetchRuns };
+  const executeWorkflow = async (workflowId: string, input?: Record<string, unknown>) => {
+    if (!officeId) return { data: null, error: new Error('No office selected') };
+
+    const { data, error } = await supabase.functions.invoke('execute-workflow', {
+      body: { workflowId, officeId, input },
+    });
+
+    if (!error) {
+      // Refetch runs to show the new run
+      setTimeout(() => fetchRuns(), 500);
+    }
+
+    return { data, error };
+  };
+
+  return { runs, loading, refetch: fetchRuns, executeWorkflow };
 }
 
 export function useDashboardStats(officeId: string | undefined) {
