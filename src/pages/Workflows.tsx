@@ -60,7 +60,7 @@ export default function Workflows() {
   const navigate = useNavigate();
   const { currentOffice, loading: officeLoading } = useCurrentOffice();
   const { workflows, loading: workflowsLoading, createWorkflow, updateWorkflow, deleteWorkflow } = useWorkflows(currentOffice?.id);
-  const { runs } = useWorkflowRuns(currentOffice?.id, 100);
+  const { runs, executeWorkflow } = useWorkflowRuns(currentOffice?.id, 100);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -68,6 +68,7 @@ export default function Workflows() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [workflowToDelete, setWorkflowToDelete] = useState<Workflow | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [executing, setExecuting] = useState<string | null>(null);
 
   const isLoading = officeLoading || workflowsLoading;
 
@@ -121,6 +122,24 @@ export default function Workflows() {
       toast.error('Failed to update workflow');
     } else {
       toast.success(workflow.is_active ? 'Workflow deactivated' : 'Workflow activated');
+    }
+  };
+
+  const handleRunWorkflow = async (workflow: Workflow) => {
+    setExecuting(workflow.id);
+    const { data, error } = await executeWorkflow(workflow.id);
+    setExecuting(null);
+    
+    if (error) {
+      toast.error('Failed to start workflow');
+    } else {
+      toast.success(`Workflow "${workflow.name}" started`, {
+        description: `Run ID: ${data?.runId?.slice(0, 8)}...`,
+        action: {
+          label: 'View Runs',
+          onClick: () => navigate('/runs'),
+        },
+      });
     }
   };
 
@@ -263,6 +282,18 @@ export default function Workflows() {
                             <Copy className="w-4 h-4 mr-2" />
                             Duplicate
                           </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleRunWorkflow(workflow)}
+                            disabled={executing === workflow.id}
+                          >
+                            {executing === workflow.id ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Play className="w-4 h-4 mr-2" />
+                            )}
+                            Run Now
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => handleToggleActive(workflow)}>
                             {workflow.is_active ? (
                               <>
