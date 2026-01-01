@@ -37,6 +37,7 @@ import { DelayNode } from '@/components/workflow/nodes/DelayNode';
 import { LoopNode } from '@/components/workflow/nodes/LoopNode';
 import { EmailNode } from '@/components/workflow/nodes/EmailNode';
 import { TransformNode } from '@/components/workflow/nodes/TransformNode';
+import { HTTPNode } from '@/components/workflow/nodes/HTTPNode';
 import { NodePalette } from '@/components/workflow/NodePalette';
 import { PropertyPanel } from '@/components/workflow/PropertyPanel';
 import { useCurrentOffice, useWorkflows } from '@/hooks/useOfficeData';
@@ -56,6 +57,7 @@ const nodeTypes = {
   loop: LoopNode,
   email: EmailNode,
   transform: TransformNode,
+  http: HTTPNode,
   // Fallback to task for undefined types
   assignment: TaskNode,
   qa: TaskNode,
@@ -195,6 +197,7 @@ export default function WorkflowBuilder() {
         loop: { iterations: 3, collection: '' },
         email: { to: '', subject: '', body: '' },
         transform: { transform: '', inputVar: '', outputVar: '' },
+        http: { method: 'GET', url: '', headers: '', body: '' },
         assignment: { description: '' },
         qa: { description: '' },
         kpi: { description: '' },

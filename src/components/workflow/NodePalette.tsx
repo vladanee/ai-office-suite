@@ -11,7 +11,8 @@ import {
   Timer,
   Repeat,
   Mail,
-  Shuffle
+  Shuffle,
+  Globe
 } from 'lucide-react';
 
 const nodeCategories = [
@@ -37,6 +38,7 @@ const nodeCategories = [
     name: 'Data & Integration',
     nodes: [
       { type: 'webhook', label: 'Webhook', icon: Webhook, color: 'accent', description: 'n8n integration' },
+      { type: 'http', label: 'HTTP Request', icon: Globe, color: 'accent', description: 'Call external APIs' },
       { type: 'transform', label: 'Transform', icon: Shuffle, color: 'primary', description: 'Transform data' },
       { type: 'email', label: 'Email', icon: Mail, color: 'destructive', description: 'Send notification' },
       { type: 'kpi', label: 'KPI Score', icon: BarChart3, color: 'primary', description: 'Calculate KPIs' },
