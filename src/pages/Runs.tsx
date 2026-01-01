@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
   CheckCircle2, 
@@ -6,9 +6,9 @@ import {
   Clock, 
   Filter,
   RefreshCw,
-  MoreVertical,
   Eye,
-  Search
+  Search,
+  Radio
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,8 @@ export default function Runs() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [isLive, setIsLive] = useState(true);
+  const prevRunsRef = useRef<string>('');
 
   const getStatusIcon = (status: string | null) => {
     switch (status) {
@@ -113,10 +115,16 @@ export default function Runs() {
         title="Workflow Runs" 
         subtitle="Monitor and manage execution history"
         actions={
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-success/10 border border-success/20">
+              <Radio className="w-3 h-3 text-success animate-pulse" />
+              <span className="text-xs font-medium text-success">Live</span>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
         }
       />
 

@@ -402,6 +402,61 @@ export function useWorkflowRuns(officeId: string | undefined, limit = 50) {
     fetchRuns();
   }, [officeId, limit]);
 
+  // Subscribe to realtime updates
+  useEffect(() => {
+    if (!officeId) return;
+
+    const channel = supabase
+      .channel('workflow-runs-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'workflow_runs',
+          filter: `office_id=eq.${officeId}`,
+        },
+        async (payload) => {
+          console.log('New workflow run:', payload.new);
+          // Fetch the new run with workflow data
+          const { data } = await supabase
+            .from('workflow_runs')
+            .select('*, workflow:workflows(name)')
+            .eq('id', (payload.new as WorkflowRun).id)
+            .single();
+          
+          if (data) {
+            setRuns(prev => [data as WorkflowRunWithWorkflow, ...prev.slice(0, limit - 1)]);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'workflow_runs',
+          filter: `office_id=eq.${officeId}`,
+        },
+        (payload) => {
+          console.log('Updated workflow run:', payload.new);
+          const updated = payload.new as WorkflowRun;
+          setRuns(prev => 
+            prev.map(run => 
+              run.id === updated.id 
+                ? { ...run, ...updated }
+                : run
+            )
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [officeId, limit]);
+
   const executeWorkflow = async (workflowId: string, input?: Record<string, unknown>) => {
     if (!officeId) return { data: null, error: new Error('No office selected') };
 
@@ -409,11 +464,7 @@ export function useWorkflowRuns(officeId: string | undefined, limit = 50) {
       body: { workflowId, officeId, input },
     });
 
-    if (!error) {
-      // Refetch runs to show the new run
-      setTimeout(() => fetchRuns(), 500);
-    }
-
+    // No need to refetch - realtime will handle it
     return { data, error };
   };
 
