@@ -163,9 +163,12 @@ export default function Workflows() {
     }
   };
 
-  const handleSave = async (data: { name: string; description?: string }) => {
+  const handleSave = async (data: { name: string; description?: string; nodes?: any; edges?: any }) => {
     if (editingWorkflow) {
-      const { error } = await updateWorkflow(editingWorkflow.id, data);
+      const { error } = await updateWorkflow(editingWorkflow.id, {
+        name: data.name,
+        description: data.description,
+      });
       if (error) {
         toast.error('Failed to update workflow');
         return { error };
@@ -173,15 +176,20 @@ export default function Workflows() {
       toast.success('Workflow updated');
       return { error: null };
     } else {
+      // Use template nodes/edges if provided, otherwise use defaults
+      const nodes = data.nodes || [
+        { id: 'start-1', type: 'start', position: { x: 250, y: 50 }, data: { label: 'Start' } },
+        { id: 'end-1', type: 'end', position: { x: 250, y: 200 }, data: { label: 'End' } },
+      ];
+      const edges = data.edges || [
+        { id: 'e-start-end', source: 'start-1', target: 'end-1', animated: true },
+      ];
+
       const { data: newWorkflow, error } = await createWorkflow({
-        ...data,
-        nodes: [
-          { id: 'start-1', type: 'start', position: { x: 250, y: 50 }, data: { label: 'Start' } },
-          { id: 'end-1', type: 'end', position: { x: 250, y: 200 }, data: { label: 'End' } },
-        ] as any,
-        edges: [
-          { id: 'e-start-end', source: 'start-1', target: 'end-1', animated: true },
-        ] as any,
+        name: data.name,
+        description: data.description,
+        nodes: nodes as any,
+        edges: edges as any,
       });
       
       if (error) {
@@ -189,7 +197,7 @@ export default function Workflows() {
         return { error };
       }
       
-      toast.success('Workflow created');
+      toast.success('Workflow created from template');
       
       // Navigate to builder after creation
       if (newWorkflow) {
