@@ -27,6 +27,9 @@ interface WorkflowNode {
     transform?: string;
     inputVar?: string;
     outputVar?: string;
+    // HTTP node
+    method?: string;
+    headers?: string;
   };
   position: { x: number; y: number };
 }
@@ -214,6 +217,12 @@ serve(async (req) => {
             case "transform":
               const transformResult = executeTransform(currentNode, context);
               context.results[currentNodeId] = transformResult;
+              processedCount++;
+              break;
+
+            case "http":
+              const httpResult = await executeHTTP(currentNode, context);
+              context.results[currentNodeId] = httpResult;
               processedCount++;
               break;
 
@@ -645,6 +654,87 @@ function executeTransform(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Transform failed",
+    };
+  }
+}
+
+async function executeHTTP(
+  node: WorkflowNode,
+  context: ExecutionContext
+): Promise<unknown> {
+  const { method = "GET", url, headers, body } = node.data;
+  console.log(`Executing HTTP request: ${method} ${url}`);
+
+  if (!url) {
+    return { success: false, error: "No URL configured" };
+  }
+
+  try {
+    // Parse headers if provided
+    let parsedHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    if (headers) {
+      try {
+        const customHeaders = JSON.parse(headers);
+        parsedHeaders = { ...parsedHeaders, ...customHeaders };
+      } catch {
+        console.warn("Failed to parse headers JSON, using defaults");
+      }
+    }
+
+    // Prepare request body
+    let requestBody: string | undefined;
+    if (body && ["POST", "PUT", "PATCH"].includes(method)) {
+      // Replace variables in body
+      let processedBody = body;
+      for (const [key, value] of Object.entries(context.variables)) {
+        const placeholder = `{{${key}}}`;
+        if (typeof value === "string" || typeof value === "number") {
+          processedBody = processedBody.replace(new RegExp(placeholder, "g"), String(value));
+        }
+      }
+      requestBody = processedBody;
+    }
+
+    const fetchOptions: RequestInit = {
+      method,
+      headers: parsedHeaders,
+    };
+
+    if (requestBody) {
+      fetchOptions.body = requestBody;
+    }
+
+    const response = await fetch(url, fetchOptions);
+    const responseText = await response.text();
+    
+    let responseData: unknown;
+    try {
+      responseData = JSON.parse(responseText);
+    } catch {
+      responseData = responseText;
+    }
+
+    console.log(`HTTP response: ${response.status}`);
+
+    // Store response in context for use by subsequent nodes
+    const outputVarName = `http_${node.id.replace(/[^a-zA-Z0-9]/g, "_")}`;
+    context.variables[outputVarName] = responseData;
+
+    return {
+      success: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      data: responseData,
+      outputVar: outputVarName,
+    };
+  } catch (error) {
+    console.error(`HTTP request error: ${error}`);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "HTTP request failed",
     };
   }
 }

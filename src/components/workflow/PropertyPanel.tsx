@@ -5,6 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface PropertyPanelProps {
   node: Node;
@@ -278,6 +285,75 @@ export function PropertyPanel({ node, onClose, onUpdate, onDelete }: PropertyPan
                 placeholder="e.g., transformedData"
                 className="bg-card font-mono text-sm"
               />
+            </div>
+          </>
+        );
+
+      case 'http':
+        return (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="node-label">Label</Label>
+              <Input
+                id="node-label"
+                value={node.data?.label || ''}
+                onChange={(e) => handleChange('label', e.target.value)}
+                placeholder="HTTP Request"
+                className="bg-card"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="node-method">Method</Label>
+              <Select
+                value={node.data?.method || 'GET'}
+                onValueChange={(value) => handleChange('method', value)}
+              >
+                <SelectTrigger className="bg-card">
+                  <SelectValue placeholder="Select method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="GET">GET</SelectItem>
+                  <SelectItem value="POST">POST</SelectItem>
+                  <SelectItem value="PUT">PUT</SelectItem>
+                  <SelectItem value="PATCH">PATCH</SelectItem>
+                  <SelectItem value="DELETE">DELETE</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="node-url">URL</Label>
+              <Input
+                id="node-url"
+                value={node.data?.url || ''}
+                onChange={(e) => handleChange('url', e.target.value)}
+                placeholder="https://api.example.com/endpoint"
+                className="bg-card font-mono text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="node-headers">Headers (JSON)</Label>
+              <Textarea
+                id="node-headers"
+                value={node.data?.headers || ''}
+                onChange={(e) => handleChange('headers', e.target.value)}
+                placeholder='{"Authorization": "Bearer token"}'
+                className="bg-card font-mono text-sm resize-none"
+                rows={3}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="node-body">Request Body (JSON)</Label>
+              <Textarea
+                id="node-body"
+                value={node.data?.body || ''}
+                onChange={(e) => handleChange('body', e.target.value)}
+                placeholder='{"key": "value"}'
+                className="bg-card font-mono text-sm resize-none"
+                rows={4}
+              />
+              <p className="text-xs text-muted-foreground">
+                Only used for POST, PUT, PATCH requests
+              </p>
             </div>
           </>
         );
