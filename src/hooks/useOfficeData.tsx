@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { Tables, Json } from '@/integrations/supabase/types';
+
+type OfficeMember = Tables<'office_members'>;
 
 type Office = Tables<'offices'>;
 type Department = Tables<'departments'>;
@@ -646,4 +648,152 @@ export function useOffices() {
   };
 
   return { offices, loading, createOffice, updateOffice, deleteOffice, refetch: fetchOffices };
+}
+
+export interface TeamMemberWithProfile extends OfficeMember {
+  profile?: {
+    email: string | null;
+    full_name: string | null;
+    avatar_url: string | null;
+  } | null;
+}
+
+export function useTeamMembers(officeId: string | undefined) {
+  const { user } = useAuth();
+  const [members, setMembers] = useState<TeamMemberWithProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+
+  const fetchMembers = useCallback(async () => {
+    if (!officeId) {
+      setMembers([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    
+    const { data, error } = await supabase
+      .from('office_members')
+      .select(`
+        *,
+        profile:profiles!office_members_user_id_fkey(email, full_name, avatar_url)
+      `)
+      .eq('office_id', officeId)
+      .order('joined_at');
+
+    if (!error && data) {
+      // Transform the data to match our interface
+      const transformedData = data.map(member => ({
+        ...member,
+        profile: Array.isArray(member.profile) ? member.profile[0] : member.profile
+      })) as TeamMemberWithProfile[];
+      
+      setMembers(transformedData);
+      
+      // Set current user's role
+      if (user) {
+        const currentMember = transformedData.find(m => m.user_id === user.id);
+        setCurrentUserRole(currentMember?.role || null);
+      }
+    }
+    setLoading(false);
+  }, [officeId, user]);
+
+  useEffect(() => {
+    fetchMembers();
+  }, [fetchMembers]);
+
+  const addMember = async (email: string, role: 'admin' | 'member') => {
+    if (!officeId) return { error: new Error('No office selected') };
+
+    // First find the user by email
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (profileError || !profileData) {
+      return { error: new Error('User not found. They must have an account first.') };
+    }
+
+    // Check if already a member
+    const existingMember = members.find(m => m.user_id === profileData.id);
+    if (existingMember) {
+      return { error: new Error('User is already a member of this office') };
+    }
+
+    const { data, error } = await supabase
+      .from('office_members')
+      .insert({
+        office_id: officeId,
+        user_id: profileData.id,
+        role,
+      })
+      .select(`
+        *,
+        profile:profiles!office_members_user_id_fkey(email, full_name, avatar_url)
+      `)
+      .single();
+
+    if (!error && data) {
+      const transformedData = {
+        ...data,
+        profile: Array.isArray(data.profile) ? data.profile[0] : data.profile
+      } as TeamMemberWithProfile;
+      
+      setMembers(prev => [...prev, transformedData]);
+    }
+
+    return { data, error };
+  };
+
+  const updateMemberRole = async (memberId: string, newRole: string) => {
+    const { data, error } = await supabase
+      .from('office_members')
+      .update({ role: newRole })
+      .eq('id', memberId)
+      .select(`
+        *,
+        profile:profiles!office_members_user_id_fkey(email, full_name, avatar_url)
+      `)
+      .single();
+
+    if (!error && data) {
+      const transformedData = {
+        ...data,
+        profile: Array.isArray(data.profile) ? data.profile[0] : data.profile
+      } as TeamMemberWithProfile;
+      
+      setMembers(prev => 
+        prev.map(m => m.id === memberId ? transformedData : m)
+      );
+    }
+
+    return { data, error };
+  };
+
+  const removeMember = async (memberId: string) => {
+    const { error } = await supabase
+      .from('office_members')
+      .delete()
+      .eq('id', memberId);
+
+    if (!error) {
+      setMembers(prev => prev.filter(m => m.id !== memberId));
+    }
+
+    return { error };
+  };
+
+  return { 
+    members, 
+    loading, 
+    currentUserRole,
+    addMember, 
+    updateMemberRole, 
+    removeMember, 
+    refetch: fetchMembers 
+  };
 }
