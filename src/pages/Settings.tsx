@@ -4,11 +4,9 @@ import {
   Building2, 
   Bell, 
   Shield, 
-  Palette,
   Key,
   Users,
   CreditCard,
-  ChevronRight
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +16,7 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { TopBar } from '@/components/layout/TopBar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { OfficeSettingsTab } from '@/components/settings/OfficeSettingsTab';
 
 const settingsSections = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -100,6 +99,10 @@ export default function Settings() {
                 </CardContent>
               </Card>
             </motion.div>
+          </TabsContent>
+
+          <TabsContent value="office">
+            <OfficeSettingsTab />
           </TabsContent>
 
           <TabsContent value="notifications">
@@ -214,7 +217,7 @@ export default function Settings() {
           </TabsContent>
 
           {/* Placeholder for other tabs */}
-          {['office', 'team', 'billing'].map((tab) => (
+          {['team', 'billing'].map((tab) => (
             <TabsContent key={tab} value={tab}>
               <Card>
                 <CardContent className="p-12 text-center">

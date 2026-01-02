@@ -531,3 +531,119 @@ export function useDashboardStats(officeId: string | undefined) {
 
   return { stats, loading };
 }
+
+export function useOffices() {
+  const { user } = useAuth();
+  const [offices, setOffices] = useState<Office[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchOffices = async () => {
+    if (!user) {
+      setOffices([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    
+    // Get all offices the user is a member of
+    const { data: memberships, error: memberError } = await supabase
+      .from('office_members')
+      .select('office_id')
+      .eq('user_id', user.id);
+
+    if (memberError || !memberships) {
+      setOffices([]);
+      setLoading(false);
+      return;
+    }
+
+    const officeIds = memberships.map(m => m.office_id);
+    
+    if (officeIds.length === 0) {
+      setOffices([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data: officesData, error } = await supabase
+      .from('offices')
+      .select('*')
+      .in('id', officeIds)
+      .order('name');
+
+    if (!error && officesData) {
+      setOffices(officesData);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchOffices();
+  }, [user]);
+
+  const createOffice = async (office: { name: string; description?: string; slug?: string }) => {
+    if (!user) return { data: null, error: new Error('Not authenticated') };
+
+    // Generate slug from name if not provided
+    const slug = office.slug || office.name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now().toString(36);
+
+    const { data, error } = await supabase
+      .from('offices')
+      .insert({
+        name: office.name,
+        description: office.description,
+        slug,
+        owner_id: user.id,
+      })
+      .select()
+      .single();
+
+    if (!error && data) {
+      // Add user as owner in office_members
+      await supabase
+        .from('office_members')
+        .insert({
+          office_id: data.id,
+          user_id: user.id,
+          role: 'owner',
+        });
+
+      setOffices(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+    }
+
+    return { data, error };
+  };
+
+  const updateOffice = async (id: string, updates: { name?: string; description?: string }) => {
+    const { data, error } = await supabase
+      .from('offices')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (!error && data) {
+      setOffices(prev => 
+        prev.map(o => o.id === id ? data : o).sort((a, b) => a.name.localeCompare(b.name))
+      );
+    }
+
+    return { data, error };
+  };
+
+  const deleteOffice = async (id: string) => {
+    const { error } = await supabase
+      .from('offices')
+      .delete()
+      .eq('id', id);
+
+    if (!error) {
+      setOffices(prev => prev.filter(o => o.id !== id));
+    }
+
+    return { error };
+  };
+
+  return { offices, loading, createOffice, updateOffice, deleteOffice, refetch: fetchOffices };
+}
