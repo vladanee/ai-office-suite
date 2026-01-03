@@ -5,7 +5,6 @@ import {
   Bell, 
   Shield, 
   Key,
-  Users,
   CreditCard,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -13,15 +12,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import { TopBar } from '@/components/layout/TopBar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OfficeSettingsTab } from '@/components/settings/OfficeSettingsTab';
+import { ProfileSettingsTab } from '@/components/settings/ProfileSettingsTab';
 
 const settingsSections = [
   { id: 'profile', label: 'Profile', icon: User },
-  { id: 'office', label: 'Office', icon: Building2 },
-  { id: 'team', label: 'Team', icon: Users },
+  { id: 'office', label: 'Office & Team', icon: Building2 },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'security', label: 'Security', icon: Shield },
   { id: 'billing', label: 'Billing', icon: CreditCard },
@@ -52,53 +50,7 @@ export default function Settings() {
           </TabsList>
 
           <TabsContent value="profile">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle>Profile Settings</CardTitle>
-                  <CardDescription>Manage your personal information</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center gap-6">
-                    <div className="w-20 h-20 rounded-full gradient-primary flex items-center justify-center text-2xl font-bold text-primary-foreground">
-                      AU
-                    </div>
-                    <div className="space-y-2">
-                      <Button variant="outline" size="sm">Change Avatar</Button>
-                      <p className="text-xs text-muted-foreground">JPG, PNG or GIF. Max 2MB.</p>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input id="firstName" defaultValue="Admin" className="bg-card" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input id="lastName" defaultValue="User" className="bg-card" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input id="email" type="email" defaultValue="admin@aioffice.io" className="bg-card" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="role">Role</Label>
-                      <Input id="role" defaultValue="Administrator" disabled className="bg-secondary" />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <Button>Save Changes</Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
+            <ProfileSettingsTab />
           </TabsContent>
 
           <TabsContent value="office">
@@ -217,17 +169,15 @@ export default function Settings() {
           </TabsContent>
 
           {/* Placeholder for other tabs */}
-          {['team', 'billing'].map((tab) => (
-            <TabsContent key={tab} value={tab}>
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <p className="text-muted-foreground">
-                    {tab.charAt(0).toUpperCase() + tab.slice(1)} settings coming soon...
-                  </p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          ))}
+          <TabsContent value="billing">
+            <Card>
+              <CardContent className="p-12 text-center">
+                <p className="text-muted-foreground">
+                  Billing settings coming soon...
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
     </div>
