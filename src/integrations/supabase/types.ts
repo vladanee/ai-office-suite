@@ -79,6 +79,13 @@ export type Database = {
             referencedRelation: "offices"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "office_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       offices: {

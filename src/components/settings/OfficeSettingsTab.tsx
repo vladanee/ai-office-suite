@@ -13,7 +13,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,9 +30,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { OfficeDialog } from './OfficeDialog';
+import { TeamMembersSection } from './TeamMembersSection';
 import { DepartmentDialog } from '@/components/departments/DepartmentDialog';
 import { DeleteDepartmentDialog } from '@/components/departments/DeleteDepartmentDialog';
-import { useCurrentOffice, useOffices, useDepartments, usePersonas } from '@/hooks/useOfficeData';
+import { useCurrentOffice, useOffices, useDepartments, usePersonas, useTeamMembers } from '@/hooks/useOfficeData';
 import { Tables } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 
@@ -45,6 +45,14 @@ export function OfficeSettingsTab() {
   const { offices, loading: officesLoading, createOffice, updateOffice, deleteOffice } = useOffices();
   const { departments, loading: deptsLoading, createDepartment, updateDepartment, deleteDepartment } = useDepartments(currentOffice?.id);
   const { personas } = usePersonas(currentOffice?.id);
+  const { 
+    members, 
+    loading: membersLoading, 
+    currentUserRole,
+    addMember, 
+    updateMemberRole, 
+    removeMember 
+  } = useTeamMembers(currentOffice?.id);
 
   const [officeDialogOpen, setOfficeDialogOpen] = useState(false);
   const [selectedOffice, setSelectedOffice] = useState<Office | null>(null);
@@ -310,6 +318,20 @@ export function OfficeSettingsTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Team Members */}
+      {currentOffice && (
+        <TeamMembersSection
+          officeId={currentOffice.id}
+          officeName={currentOffice.name}
+          members={members}
+          loading={membersLoading}
+          currentUserRole={currentUserRole}
+          onAddMember={addMember}
+          onUpdateRole={updateMemberRole}
+          onRemoveMember={removeMember}
+        />
+      )}
 
       {/* Departments */}
       {currentOffice && (
