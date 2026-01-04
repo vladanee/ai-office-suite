@@ -23,3 +23,6 @@ verify_jwt = true
 
 [functions.execute-workflow]
 verify_jwt = true
+
+[functions.persona-chat]
+verify_jwt = false

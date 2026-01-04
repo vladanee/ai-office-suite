@@ -10,6 +10,7 @@ import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import Personas from "./pages/Personas";
 import Departments from "./pages/Departments";
+import Chat from "./pages/Chat";
 import Workflows from "./pages/Workflows";
 import WorkflowBuilder from "./pages/WorkflowBuilder";
 import Runs from "./pages/Runs";
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/departments" element={<Departments />} />
               <Route path="/personas" element={<Personas />} />
+              <Route path="/chat" element={<Chat />} />
               <Route path="/workflows" element={<Workflows />} />
               <Route path="/workflows/:id" element={<WorkflowBuilder />} />
               <Route path="/runs" element={<Runs />} />
