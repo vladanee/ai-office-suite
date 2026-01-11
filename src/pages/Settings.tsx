@@ -16,6 +16,7 @@ import { TopBar } from '@/components/layout/TopBar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OfficeSettingsTab } from '@/components/settings/OfficeSettingsTab';
 import { ProfileSettingsTab } from '@/components/settings/ProfileSettingsTab';
+import { BillingSettingsTab } from '@/components/settings/BillingSettingsTab';
 
 const settingsSections = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -168,15 +169,8 @@ export default function Settings() {
             </motion.div>
           </TabsContent>
 
-          {/* Placeholder for other tabs */}
           <TabsContent value="billing">
-            <Card>
-              <CardContent className="p-12 text-center">
-                <p className="text-muted-foreground">
-                  Billing settings coming soon...
-                </p>
-              </CardContent>
-            </Card>
+            <BillingSettingsTab />
           </TabsContent>
         </Tabs>
       </div>
