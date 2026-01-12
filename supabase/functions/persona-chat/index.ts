@@ -12,9 +12,88 @@ serve(async (req) => {
   }
 
   try {
+    // Extract and validate authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized - missing or invalid authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    // Create Supabase client with user's auth token
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Verify authentication using getClaims
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims) {
+      console.error('Auth verification failed:', claimsError);
+      return new Response(JSON.stringify({ error: 'Unauthorized - invalid token' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const userId = claimsData.claims.sub;
+    if (!userId) {
+      return new Response(JSON.stringify({ error: 'Unauthorized - missing user ID' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { sessionId, messages, personaSystemPrompt, personaName, personaRole } = await req.json();
     
-    console.log('Persona chat request:', { sessionId, personaName, personaRole, messageCount: messages?.length });
+    console.log('Persona chat request:', { userId, sessionId, personaName, personaRole, messageCount: messages?.length });
+
+    // Verify user owns this session or has access to it
+    if (sessionId) {
+      const { data: session, error: sessionError } = await supabase
+        .from('chat_sessions')
+        .select('id, user_id, persona_id, office_id')
+        .eq('id', sessionId)
+        .single();
+
+      if (sessionError || !session) {
+        console.error('Session lookup failed:', sessionError);
+        return new Response(JSON.stringify({ error: 'Session not found' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Verify user owns this session
+      if (session.user_id !== userId) {
+        console.error('User does not own this session:', { sessionUserId: session.user_id, requestUserId: userId });
+        return new Response(JSON.stringify({ error: 'Forbidden - you do not have access to this session' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Verify user is a member of the office
+      const { data: membership, error: membershipError } = await supabase
+        .from('office_members')
+        .select('id')
+        .eq('office_id', session.office_id)
+        .eq('user_id', userId)
+        .single();
+
+      if (membershipError || !membership) {
+        console.error('Office membership check failed:', membershipError);
+        return new Response(JSON.stringify({ error: 'Forbidden - you are not a member of this office' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {

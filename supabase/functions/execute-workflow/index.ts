@@ -6,6 +6,81 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// SSRF Protection: Validate URLs to prevent attacks against internal services
+function isUrlSafe(urlString: string): { safe: boolean; reason?: string } {
+  try {
+    const url = new URL(urlString);
+    
+    // Only allow http and https schemes
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      return { safe: false, reason: `Invalid protocol: ${url.protocol}. Only http and https are allowed.` };
+    }
+    
+    const hostname = url.hostname.toLowerCase();
+    
+    // Block localhost and loopback addresses
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+      return { safe: false, reason: 'Requests to localhost are not allowed.' };
+    }
+    
+    // Block link-local addresses (169.254.x.x) - commonly used for cloud metadata
+    if (hostname === '169.254.169.254' || hostname.startsWith('169.254.')) {
+      return { safe: false, reason: 'Requests to link-local addresses are not allowed.' };
+    }
+    
+    // Block private IP ranges (RFC 1918)
+    const ipv4Pattern = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+    const ipMatch = hostname.match(ipv4Pattern);
+    if (ipMatch) {
+      const [, a, b] = ipMatch.map(Number);
+      
+      // 10.0.0.0/8 (10.x.x.x)
+      if (a === 10) {
+        return { safe: false, reason: 'Requests to private IP ranges (10.x.x.x) are not allowed.' };
+      }
+      
+      // 172.16.0.0/12 (172.16.x.x - 172.31.x.x)
+      if (a === 172 && b >= 16 && b <= 31) {
+        return { safe: false, reason: 'Requests to private IP ranges (172.16-31.x.x) are not allowed.' };
+      }
+      
+      // 192.168.0.0/16 (192.168.x.x)
+      if (a === 192 && b === 168) {
+        return { safe: false, reason: 'Requests to private IP ranges (192.168.x.x) are not allowed.' };
+      }
+      
+      // 0.0.0.0
+      if (a === 0) {
+        return { safe: false, reason: 'Requests to 0.0.0.0 are not allowed.' };
+      }
+    }
+    
+    // Block internal Supabase/edge function hostnames
+    const blockedHostPatterns = [
+      /^.*\.internal$/,
+      /^.*\.local$/,
+      /^supabase\./,
+      /^.*\.supabase\.co$/,
+      /^.*\.supabase\.in$/,
+    ];
+    
+    for (const pattern of blockedHostPatterns) {
+      if (pattern.test(hostname)) {
+        return { safe: false, reason: 'Requests to internal service hostnames are not allowed.' };
+      }
+    }
+    
+    return { safe: true };
+  } catch (error) {
+    return { safe: false, reason: `Invalid URL format: ${error instanceof Error ? error.message : 'Unknown error'}` };
+  }
+}
+
+// Timeout for external requests (30 seconds)
+const EXTERNAL_REQUEST_TIMEOUT_MS = 30000;
+// Maximum response size (5MB)
+const MAX_RESPONSE_SIZE = 5 * 1024 * 1024;
+
 interface WorkflowNode {
   id: string;
   type: string;
@@ -453,7 +528,21 @@ async function executeWebhook(
     return { success: false, error: "No URL configured" };
   }
 
+  // SSRF Protection: Validate URL before making request
+  const urlValidation = isUrlSafe(url);
+  if (!urlValidation.safe) {
+    console.error(`Webhook URL blocked (SSRF protection): ${url} - ${urlValidation.reason}`);
+    return { 
+      success: false, 
+      error: `URL not allowed: ${urlValidation.reason}` 
+    };
+  }
+
   try {
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), EXTERNAL_REQUEST_TIMEOUT_MS);
+
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -466,9 +555,30 @@ async function executeWebhook(
         variables: context.variables,
         results: context.results,
       }),
+      signal: controller.signal,
     });
 
+    clearTimeout(timeoutId);
+
+    // Check response size
+    const contentLength = response.headers.get('content-length');
+    if (contentLength && parseInt(contentLength) > MAX_RESPONSE_SIZE) {
+      return {
+        success: false,
+        error: `Response too large: ${contentLength} bytes exceeds maximum of ${MAX_RESPONSE_SIZE} bytes`,
+      };
+    }
+
     const responseText = await response.text();
+    
+    // Validate response size
+    if (responseText.length > MAX_RESPONSE_SIZE) {
+      return {
+        success: false,
+        error: `Response too large: ${responseText.length} bytes exceeds maximum of ${MAX_RESPONSE_SIZE} bytes`,
+      };
+    }
+
     let responseData: unknown;
     
     try {
@@ -486,6 +596,14 @@ async function executeWebhook(
     };
   } catch (error) {
     console.error(`Webhook error: ${error}`);
+    
+    if (error instanceof Error && error.name === 'AbortError') {
+      return {
+        success: false,
+        error: `Request timeout after ${EXTERNAL_REQUEST_TIMEOUT_MS / 1000} seconds`,
+      };
+    }
+    
     return {
       success: false,
       error: error instanceof Error ? error.message : "Webhook failed",
@@ -669,6 +787,16 @@ async function executeHTTP(
     return { success: false, error: "No URL configured" };
   }
 
+  // SSRF Protection: Validate URL before making request
+  const urlValidation = isUrlSafe(url);
+  if (!urlValidation.safe) {
+    console.error(`HTTP URL blocked (SSRF protection): ${url} - ${urlValidation.reason}`);
+    return { 
+      success: false, 
+      error: `URL not allowed: ${urlValidation.reason}` 
+    };
+  }
+
   try {
     // Parse headers if provided
     let parsedHeaders: Record<string, string> = {
@@ -698,9 +826,14 @@ async function executeHTTP(
       requestBody = processedBody;
     }
 
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), EXTERNAL_REQUEST_TIMEOUT_MS);
+
     const fetchOptions: RequestInit = {
       method,
       headers: parsedHeaders,
+      signal: controller.signal,
     };
 
     if (requestBody) {
@@ -708,8 +841,28 @@ async function executeHTTP(
     }
 
     const response = await fetch(url, fetchOptions);
+    
+    clearTimeout(timeoutId);
+
+    // Check response size
+    const contentLength = response.headers.get('content-length');
+    if (contentLength && parseInt(contentLength) > MAX_RESPONSE_SIZE) {
+      return {
+        success: false,
+        error: `Response too large: ${contentLength} bytes exceeds maximum of ${MAX_RESPONSE_SIZE} bytes`,
+      };
+    }
+
     const responseText = await response.text();
     
+    // Validate response size
+    if (responseText.length > MAX_RESPONSE_SIZE) {
+      return {
+        success: false,
+        error: `Response too large: ${responseText.length} bytes exceeds maximum of ${MAX_RESPONSE_SIZE} bytes`,
+      };
+    }
+
     let responseData: unknown;
     try {
       responseData = JSON.parse(responseText);
@@ -732,6 +885,14 @@ async function executeHTTP(
     };
   } catch (error) {
     console.error(`HTTP request error: ${error}`);
+    
+    if (error instanceof Error && error.name === 'AbortError') {
+      return {
+        success: false,
+        error: `Request timeout after ${EXTERNAL_REQUEST_TIMEOUT_MS / 1000} seconds`,
+      };
+    }
+    
     return {
       success: false,
       error: error instanceof Error ? error.message : "HTTP request failed",
