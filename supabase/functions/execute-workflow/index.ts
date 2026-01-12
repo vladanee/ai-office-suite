@@ -671,6 +671,42 @@ async function executeLoop(
   };
 }
 
+// Sanitize value for text context (email body, plain text)
+function sanitizeForText(value: string | number): string {
+  const str = String(value);
+  // Remove potentially dangerous HTML/script tags for text contexts
+  // This prevents HTML injection if email is rendered as HTML
+  return str
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
+// Sanitize value for JSON context (HTTP request bodies)
+function sanitizeForJson(value: string | number): string {
+  const str = String(value);
+  // Escape special JSON characters to prevent JSON injection
+  return str
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t');
+}
+
+// Validate variable value to ensure it's safe for substitution
+function isValidVariableValue(value: unknown): value is string | number {
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    return false;
+  }
+  // Limit length to prevent DoS via very long strings
+  if (typeof value === 'string' && value.length > 10000) {
+    return false;
+  }
+  return true;
+}
+
 async function executeEmail(
   node: WorkflowNode,
   context: ExecutionContext
@@ -682,16 +718,24 @@ async function executeEmail(
     return { success: false, error: "No recipient configured" };
   }
 
-  // Replace variables in subject and body
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(to)) {
+    return { success: false, error: "Invalid email address format" };
+  }
+
+  // Replace variables in subject and body with sanitization for HTML/text context
   let processedSubject = subject || "Workflow Notification";
   let processedBody = body || "This is an automated notification from your workflow.";
 
-  // Simple variable replacement
+  // Secure variable replacement with validation and sanitization
   for (const [key, value] of Object.entries(context.variables)) {
     const placeholder = `{{${key}}}`;
-    if (typeof value === "string" || typeof value === "number") {
-      processedSubject = processedSubject.replace(new RegExp(placeholder, "g"), String(value));
-      processedBody = processedBody.replace(new RegExp(placeholder, "g"), String(value));
+    if (isValidVariableValue(value)) {
+      // Sanitize for text/HTML context to prevent injection
+      const sanitizedValue = sanitizeForText(value);
+      processedSubject = processedSubject.replace(new RegExp(placeholder, "g"), sanitizedValue);
+      processedBody = processedBody.replace(new RegExp(placeholder, "g"), sanitizedValue);
     }
   }
 
@@ -815,12 +859,18 @@ async function executeHTTP(
     // Prepare request body
     let requestBody: string | undefined;
     if (body && ["POST", "PUT", "PATCH"].includes(method)) {
-      // Replace variables in body
+      // Replace variables in body with JSON-safe sanitization
       let processedBody = body;
+      
+      // Check if body appears to be JSON (for context-aware sanitization)
+      const isJsonBody = body.trim().startsWith('{') || body.trim().startsWith('[');
+      
       for (const [key, value] of Object.entries(context.variables)) {
         const placeholder = `{{${key}}}`;
-        if (typeof value === "string" || typeof value === "number") {
-          processedBody = processedBody.replace(new RegExp(placeholder, "g"), String(value));
+        if (isValidVariableValue(value)) {
+          // Use JSON sanitization for JSON bodies, otherwise plain text
+          const sanitizedValue = isJsonBody ? sanitizeForJson(value) : String(value);
+          processedBody = processedBody.replace(new RegExp(placeholder, "g"), sanitizedValue);
         }
       }
       requestBody = processedBody;
