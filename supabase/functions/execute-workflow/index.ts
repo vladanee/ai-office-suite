@@ -130,8 +130,39 @@ serve(async (req) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+  // Authentication: Verify user token
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Create client with user's token to verify authentication
+  const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const token = authHeader.replace("Bearer ", "");
+  const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+  
+  if (claimsError || !claimsData?.claims) {
+    console.error("Auth error:", claimsError);
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const userId = claimsData.claims.sub;
+  console.log(`Authenticated user: ${userId}`);
+
+  // Create service role client for database operations
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
     const { workflowId, officeId, input } = await req.json();
@@ -140,6 +171,37 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "workflowId and officeId are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verify user is a member of the office
+    const { data: membership, error: membershipError } = await supabase
+      .from("office_members")
+      .select("id")
+      .eq("office_id", officeId)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (membershipError) {
+      console.error("Membership check error:", membershipError);
+      return new Response(
+        JSON.stringify({ error: "Failed to verify permissions" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Also check if user is office owner
+    const { data: office, error: officeError } = await supabase
+      .from("offices")
+      .select("owner_id")
+      .eq("id", officeId)
+      .single();
+
+    if (!membership && (!office || office.owner_id !== userId)) {
+      console.log(`User ${userId} is not a member of office ${officeId}`);
+      return new Response(
+        JSON.stringify({ error: "Forbidden" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
