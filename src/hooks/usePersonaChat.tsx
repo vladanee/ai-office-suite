@@ -189,14 +189,20 @@ export function usePersonaChat(personaId: string | null, officeId: string | unde
         content: m.content,
       }));
 
-      // Call the edge function with streaming
+      // Get user's session token for proper authentication
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) {
+        throw new Error('Not authenticated');
+      }
+
+      // Call the edge function with streaming using user's token
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/persona-chat`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${authSession.access_token}`,
           },
           body: JSON.stringify({
             sessionId: session.id,

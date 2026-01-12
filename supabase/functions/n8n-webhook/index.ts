@@ -29,12 +29,20 @@ serve(async (req) => {
   }
 
   try {
-    // Verify webhook secret (optional security layer)
-    const webhookSecret = req.headers.get('x-webhook-secret');
+    // Verify webhook secret (mandatory security layer)
     const expectedSecret = Deno.env.get('N8N_WEBHOOK_SECRET');
     
-    if (expectedSecret && webhookSecret !== expectedSecret) {
-      console.log('Invalid webhook secret provided');
+    if (!expectedSecret) {
+      console.error('N8N_WEBHOOK_SECRET not configured - rejecting request');
+      return new Response(JSON.stringify({ error: 'Internal server error' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    const webhookSecret = req.headers.get('x-webhook-secret');
+    if (webhookSecret !== expectedSecret) {
+      console.log('Invalid or missing webhook secret');
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
