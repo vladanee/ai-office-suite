@@ -97,6 +97,7 @@ export default function WorkflowBuilder() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [running, setRunning] = useState(false);
   
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges);
@@ -171,6 +172,47 @@ export default function WorkflowBuilder() {
       setSaved(true);
       toast.success('Workflow saved');
       setTimeout(() => setSaved(false), 2000);
+    }
+  };
+
+  const handleRun = async () => {
+    if (!workflow || !id || !currentOffice) return;
+
+    // Save first before running
+    await handleSave();
+
+    setRunning(true);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('You must be logged in to run workflows');
+        setRunning(false);
+        return;
+      }
+
+      const response = await supabase.functions.invoke('execute-workflow', {
+        body: {
+          workflowId: id,
+          officeId: currentOffice.id,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to execute workflow');
+      }
+
+      toast.success('Workflow started! Check the Runs page to monitor progress.', {
+        action: {
+          label: 'View Runs',
+          onClick: () => navigate('/runs'),
+        },
+      });
+    } catch (error: any) {
+      console.error('Workflow execution error:', error);
+      toast.error(error.message || 'Failed to run workflow');
+    } finally {
+      setRunning(false);
     }
   };
 
@@ -313,9 +355,13 @@ export default function WorkflowBuilder() {
               )}
               {saving ? 'Saving...' : saved ? 'Saved' : 'Save'}
             </Button>
-            <Button variant="success" size="sm" disabled>
-              <Play className="w-4 h-4 mr-2" />
-              Run
+            <Button variant="success" size="sm" onClick={handleRun} disabled={running || !workflow}>
+              {running ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 mr-2" />
+              )}
+              {running ? 'Running...' : 'Run'}
             </Button>
           </div>
         }
