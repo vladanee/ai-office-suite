@@ -13,7 +13,8 @@ import {
   Workflow as WorkflowIcon,
   Loader2,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  HelpCircle
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,10 @@ import { useCurrentOffice, useWorkflows, useWorkflowRuns } from '@/hooks/useOffi
 import { WorkflowDialog } from '@/components/workflows/WorkflowDialog';
 import { Tables } from '@/integrations/supabase/types';
 import { formatDistanceToNow } from 'date-fns';
+import { useOnboardingTour } from '@/hooks/useOnboardingTour';
+import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
+import { workflowsListTourSteps } from '@/lib/workflowTourSteps';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 type Workflow = Tables<'workflows'>;
 
@@ -69,6 +74,19 @@ export default function Workflows() {
   const [workflowToDelete, setWorkflowToDelete] = useState<Workflow | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [executing, setExecuting] = useState<string | null>(null);
+
+  // Onboarding tour
+  const tour = useOnboardingTour({
+    tourId: 'workflows-list-tour',
+    steps: workflowsListTourSteps,
+    autoStart: true,
+    delay: 800,
+    onComplete: () => {
+      toast.success('Tour completed! You\'re ready to build workflows.', {
+        description: 'Click "New Workflow" to create your first automation.',
+      });
+    },
+  });
 
   const isLoading = officeLoading || workflowsLoading;
 
@@ -218,20 +236,53 @@ export default function Workflows() {
 
   return (
     <div className="min-h-screen">
+      {/* Onboarding Tour */}
+      <OnboardingTour
+        isActive={tour.isActive}
+        currentStep={tour.currentStep}
+        currentStepIndex={tour.currentStepIndex}
+        totalSteps={tour.totalSteps}
+        progress={tour.progress}
+        isFirstStep={tour.isFirstStep}
+        isLastStep={tour.isLastStep}
+        onNext={tour.nextStep}
+        onPrev={tour.prevStep}
+        onSkip={tour.skipTour}
+        onClose={() => tour.endTour(false)}
+      />
+
       <TopBar 
         title="Workflows" 
         subtitle="Build and manage automation workflows"
+        data-tour="workflows-header"
         actions={
-          <Button onClick={handleCreate}>
-            <Plus className="w-4 h-4 mr-2" />
-            New Workflow
-          </Button>
+          <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    tour.resetTour();
+                    setTimeout(() => tour.startTour(), 100);
+                  }}
+                >
+                  <HelpCircle className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Restart tour</TooltipContent>
+            </Tooltip>
+            <Button onClick={handleCreate} data-tour="new-workflow-button">
+              <Plus className="w-4 h-4 mr-2" />
+              New Workflow
+            </Button>
+          </div>
         }
       />
 
       <div className="p-6 space-y-6">
         {/* Search */}
-        <div className="relative max-w-md">
+        <div className="relative max-w-md" data-tour="workflow-search">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search workflows..."
@@ -248,7 +299,7 @@ export default function Workflows() {
           animate="show"
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
         >
-          {filteredWorkflows.map((workflow) => {
+          {filteredWorkflows.map((workflow, index) => {
             const lastRun = getLastRun(workflow.id);
             const runCount = getRunCount(workflow.id);
             
@@ -257,6 +308,7 @@ export default function Workflows() {
                 <Card 
                   className="group hover:border-primary/30 transition-all duration-200 hover:shadow-glow cursor-pointer"
                   onClick={() => handleOpenBuilder(workflow)}
+                  data-tour={index === 0 ? 'workflow-card' : undefined}
                 >
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between mb-4">

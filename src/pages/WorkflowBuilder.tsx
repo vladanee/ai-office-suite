@@ -19,12 +19,11 @@ import { motion } from 'framer-motion';
 import { 
   Play, 
   Save, 
-  Undo, 
-  Redo, 
   Settings2,
   ArrowLeft,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  HelpCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TopBar } from '@/components/layout/TopBar';
@@ -44,6 +43,10 @@ import { useCurrentOffice, useWorkflows } from '@/hooks/useOfficeData';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Tables } from '@/integrations/supabase/types';
+import { useOnboardingTour } from '@/hooks/useOnboardingTour';
+import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
+import { workflowBuilderTourSteps } from '@/lib/workflowTourSteps';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 type Workflow = Tables<'workflows'>;
 
@@ -102,6 +105,19 @@ export default function WorkflowBuilder() {
   
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
+
+  // Onboarding tour
+  const tour = useOnboardingTour({
+    tourId: 'workflow-builder-tour',
+    steps: workflowBuilderTourSteps,
+    autoStart: true,
+    delay: 1000,
+    onComplete: () => {
+      toast.success('You\'re ready to build! Drag nodes from the palette to get started.', {
+        duration: 5000,
+      });
+    },
+  });
 
   // Load workflow
   useEffect(() => {
@@ -247,16 +263,47 @@ export default function WorkflowBuilder() {
 
   return (
     <div className="h-screen flex flex-col">
+      {/* Onboarding Tour */}
+      <OnboardingTour
+        isActive={tour.isActive}
+        currentStep={tour.currentStep}
+        currentStepIndex={tour.currentStepIndex}
+        totalSteps={tour.totalSteps}
+        progress={tour.progress}
+        isFirstStep={tour.isFirstStep}
+        isLastStep={tour.isLastStep}
+        onNext={tour.nextStep}
+        onPrev={tour.prevStep}
+        onSkip={tour.skipTour}
+        onClose={() => tour.endTour(false)}
+      />
+
       <TopBar 
         title={workflow?.name || 'Workflow Builder'}
         subtitle={workflow?.description || 'Design your automation workflows'}
+        data-tour="builder-header"
         actions={
           <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    tour.resetTour();
+                    setTimeout(() => tour.startTour(), 100);
+                  }}
+                >
+                  <HelpCircle className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Restart tour</TooltipContent>
+            </Tooltip>
             <Button variant="outline" size="sm" onClick={() => navigate('/workflows')}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </Button>
-            <Button variant="outline" size="sm" onClick={handleSave} disabled={saving}>
+            <Button variant="outline" size="sm" onClick={handleSave} disabled={saving} data-tour="save-button">
               {saving ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : saved ? (
@@ -281,13 +328,14 @@ export default function WorkflowBuilder() {
             initial={{ x: -300 }}
             animate={{ x: 0 }}
             className="w-64 border-r border-border bg-card p-4 overflow-y-auto"
+            data-tour="node-palette"
           >
             <NodePalette />
           </motion.div>
         )}
 
         {/* Canvas */}
-        <div className="flex-1 relative" ref={reactFlowWrapper}>
+        <div className="flex-1 relative" ref={reactFlowWrapper} data-tour="workflow-canvas">
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -319,6 +367,7 @@ export default function WorkflowBuilder() {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowPalette(!showPalette)}
+                data-tour="toggle-palette"
               >
                 <Settings2 className="w-4 h-4 mr-2" />
                 {showPalette ? 'Hide' : 'Show'} Palette
