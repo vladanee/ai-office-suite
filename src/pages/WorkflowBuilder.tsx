@@ -37,6 +37,7 @@ import { LoopNode } from '@/components/workflow/nodes/LoopNode';
 import { EmailNode } from '@/components/workflow/nodes/EmailNode';
 import { TransformNode } from '@/components/workflow/nodes/TransformNode';
 import { HTTPNode } from '@/components/workflow/nodes/HTTPNode';
+import { SocialNode } from '@/components/workflow/nodes/SocialNode';
 import { NodePalette } from '@/components/workflow/NodePalette';
 import { PropertyPanel } from '@/components/workflow/PropertyPanel';
 import { useCurrentOffice, useWorkflows } from '@/hooks/useOfficeData';
@@ -61,6 +62,11 @@ const nodeTypes = {
   email: EmailNode,
   transform: TransformNode,
   http: HTTPNode,
+  // Social media nodes
+  twitter: SocialNode,
+  linkedin: SocialNode,
+  instagram: SocialNode,
+  facebook: SocialNode,
   // Fallback to task for undefined types
   assignment: TaskNode,
   qa: TaskNode,
@@ -260,6 +266,10 @@ export default function WorkflowBuilder() {
         qa: { description: '' },
         kpi: { description: '' },
         report: { description: '' },
+        twitter: { platform: 'twitter', content: '', hashtags: '' },
+        linkedin: { platform: 'linkedin', content: '', hashtags: '' },
+        instagram: { platform: 'instagram', content: '', hashtags: '', mediaUrl: '' },
+        facebook: { platform: 'facebook', content: '', hashtags: '', mediaUrl: '' },
       };
 
       const newNode: Node = {

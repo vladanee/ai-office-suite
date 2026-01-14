@@ -355,6 +355,105 @@ export function PropertyPanel({ node, onClose, onUpdate, onDelete }: PropertyPan
                 Only used for POST, PUT, PATCH requests
               </p>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="node-comment">💬 Note (optional)</Label>
+              <Textarea
+                id="node-comment"
+                value={node.data?.comment || ''}
+                onChange={(e) => handleChange('comment', e.target.value)}
+                placeholder="Add a note or reminder about this node..."
+                className="bg-card resize-none"
+                rows={2}
+              />
+            </div>
+          </>
+        );
+
+      case 'twitter':
+      case 'linkedin':
+      case 'instagram':
+      case 'facebook':
+        const platformNames = {
+          twitter: 'Twitter/X',
+          linkedin: 'LinkedIn',
+          instagram: 'Instagram',
+          facebook: 'Facebook',
+        };
+        return (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="node-label">Label</Label>
+              <Input
+                id="node-label"
+                value={node.data?.label || ''}
+                onChange={(e) => handleChange('label', e.target.value)}
+                placeholder={`Post to ${platformNames[node.type as keyof typeof platformNames]}`}
+                className="bg-card"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="node-content">Post Content</Label>
+              <Textarea
+                id="node-content"
+                value={node.data?.content || ''}
+                onChange={(e) => handleChange('content', e.target.value)}
+                placeholder="Write your post content here. Use {{variables}} for dynamic content."
+                className="bg-card resize-none"
+                rows={4}
+              />
+              <p className="text-xs text-muted-foreground">
+                {node.type === 'twitter' && 'Max 280 characters recommended'}
+                {node.type === 'linkedin' && 'Max 3000 characters recommended'}
+                {node.type === 'instagram' && 'Max 2200 characters for caption'}
+                {node.type === 'facebook' && 'No strict character limit'}
+              </p>
+            </div>
+            {(node.type === 'instagram' || node.type === 'facebook') && (
+              <div className="space-y-2">
+                <Label htmlFor="node-media">Media URL (optional)</Label>
+                <Input
+                  id="node-media"
+                  value={node.data?.mediaUrl || ''}
+                  onChange={(e) => handleChange('mediaUrl', e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                  className="bg-card font-mono text-sm"
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="node-hashtags">Hashtags (optional)</Label>
+              <Input
+                id="node-hashtags"
+                value={node.data?.hashtags || ''}
+                onChange={(e) => handleChange('hashtags', e.target.value)}
+                placeholder="#marketing #automation"
+                className="bg-card"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="node-schedule">Schedule (optional)</Label>
+              <Input
+                id="node-schedule"
+                type="datetime-local"
+                value={node.data?.scheduledAt || ''}
+                onChange={(e) => handleChange('scheduledAt', e.target.value)}
+                className="bg-card"
+              />
+              <p className="text-xs text-muted-foreground">
+                Leave empty to post immediately
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="node-comment">💬 Note (optional)</Label>
+              <Textarea
+                id="node-comment"
+                value={node.data?.comment || ''}
+                onChange={(e) => handleChange('comment', e.target.value)}
+                placeholder="Add a note or reminder about this node..."
+                className="bg-card resize-none"
+                rows={2}
+              />
+            </div>
           </>
         );
 

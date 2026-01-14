@@ -12,7 +12,7 @@ export interface WorkflowTemplate {
   name: string;
   description: string;
   icon: string;
-  category: 'getting-started' | 'automation' | 'notification' | 'data' | 'integration' | 'ai-powered';
+  category: 'getting-started' | 'automation' | 'notification' | 'data' | 'integration' | 'ai-powered' | 'social-media';
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   estimatedTime: string;
   useCases: string[];
@@ -385,6 +385,129 @@ export const workflowTemplates: WorkflowTemplate[] = [
     ],
   },
 
+  // ============ SOCIAL MEDIA ============
+  {
+    id: 'cross-platform-post',
+    name: 'Cross-Platform Publishing',
+    description: 'Create content once and publish to multiple social networks simultaneously.',
+    icon: '📱',
+    category: 'social-media',
+    difficulty: 'beginner',
+    estimatedTime: '5 min',
+    useCases: ['Brand awareness', 'Product launches', 'Announcements', 'Content marketing'],
+    featured: true,
+    nodes: [
+      { id: 'start-1', type: 'start', position: { x: 250, y: 50 }, data: { label: 'Start' } },
+      { id: 'task-create', type: 'task', position: { x: 250, y: 160 }, data: { label: 'Create Content', description: 'Generate engaging social media content based on {{topic}}. Create a compelling message that works across platforms.' } },
+      { id: 'twitter-1', type: 'twitter', position: { x: 50, y: 300 }, data: { label: 'Post to Twitter', platform: 'twitter', content: '{{content_short}}' } },
+      { id: 'linkedin-1', type: 'linkedin', position: { x: 250, y: 300 }, data: { label: 'Post to LinkedIn', platform: 'linkedin', content: '{{content_professional}}' } },
+      { id: 'facebook-1', type: 'facebook', position: { x: 450, y: 300 }, data: { label: 'Post to Facebook', platform: 'facebook', content: '{{content_full}}' } },
+      { id: 'task-summary', type: 'task', position: { x: 250, y: 440 }, data: { label: 'Generate Report', description: 'Compile posting results and create a summary of all published content.' } },
+      { id: 'end-1', type: 'end', position: { x: 250, y: 560 }, data: { label: 'End' } },
+    ],
+    edges: [
+      { id: 'e1', source: 'start-1', target: 'task-create' },
+      { id: 'e2', source: 'task-create', target: 'twitter-1' },
+      { id: 'e3', source: 'task-create', target: 'linkedin-1' },
+      { id: 'e4', source: 'task-create', target: 'facebook-1' },
+      { id: 'e5', source: 'twitter-1', target: 'task-summary' },
+      { id: 'e6', source: 'linkedin-1', target: 'task-summary' },
+      { id: 'e7', source: 'facebook-1', target: 'task-summary' },
+      { id: 'e8', source: 'task-summary', target: 'end-1' },
+    ],
+    steps: [
+      { nodeId: 'task-create', title: 'Content Creation', description: 'AI creates platform-optimized versions of your content.', tip: 'Use {{content_short}} for Twitter\'s limit, {{content_professional}} for LinkedIn tone.' },
+      { nodeId: 'twitter-1', title: 'Twitter/X Post', description: 'Posts to Twitter with optimized short-form content.', tip: 'Keep content under 280 characters. Use hashtags strategically.' },
+    ],
+  },
+  {
+    id: 'scheduled-social',
+    name: 'Scheduled Social Posts',
+    description: 'Plan and schedule social media posts with AI-generated content suggestions.',
+    icon: '📅',
+    category: 'social-media',
+    difficulty: 'intermediate',
+    estimatedTime: '10 min',
+    useCases: ['Content calendar', 'Campaign scheduling', 'Holiday posts', 'Regular updates'],
+    nodes: [
+      { id: 'start-1', type: 'start', position: { x: 250, y: 50 }, data: { label: 'Start' } },
+      { id: 'task-plan', type: 'task', position: { x: 250, y: 160 }, data: { label: 'Plan Content', description: 'Based on the topic "{{topic}}", create 3-5 post ideas with different angles and hooks.' } },
+      { id: 'loop-1', type: 'loop', position: { x: 250, y: 290 }, data: { label: 'For Each Post', iterations: 5, collection: 'posts' } },
+      { id: 'task-write', type: 'task', position: { x: 250, y: 420 }, data: { label: 'Write Post', description: 'Create engaging copy for post {{_loopIndex}}: {{_loopItem.idea}}' } },
+      { id: 'delay-1', type: 'delay', position: { x: 250, y: 550 }, data: { label: 'Schedule Gap', delay: 3600 } },
+      { id: 'twitter-1', type: 'twitter', position: { x: 250, y: 680 }, data: { label: 'Post to Twitter', platform: 'twitter', content: '{{post_content}}' } },
+      { id: 'end-1', type: 'end', position: { x: 250, y: 810 }, data: { label: 'End' } },
+    ],
+    edges: [
+      { id: 'e1', source: 'start-1', target: 'task-plan' },
+      { id: 'e2', source: 'task-plan', target: 'loop-1' },
+      { id: 'e3', source: 'loop-1', target: 'task-write', sourceHandle: 'loop' },
+      { id: 'e4', source: 'task-write', target: 'delay-1' },
+      { id: 'e5', source: 'delay-1', target: 'twitter-1' },
+      { id: 'e6', source: 'twitter-1', target: 'loop-1' },
+      { id: 'e7', source: 'loop-1', target: 'end-1', sourceHandle: 'done' },
+    ],
+    steps: [
+      { nodeId: 'delay-1', title: 'Scheduling Posts', description: 'The delay node spaces out posts to avoid flooding your feed.', tip: 'Set delay in seconds: 3600 = 1 hour, 86400 = 24 hours.' },
+    ],
+  },
+  {
+    id: 'instagram-content',
+    name: 'Instagram Content Pipeline',
+    description: 'Generate captions, hashtags, and posting schedule for Instagram content.',
+    icon: '📸',
+    category: 'social-media',
+    difficulty: 'beginner',
+    estimatedTime: '7 min',
+    useCases: ['Instagram marketing', 'Influencer content', 'Product showcases', 'Story planning'],
+    featured: true,
+    nodes: [
+      { id: 'start-1', type: 'start', position: { x: 250, y: 50 }, data: { label: 'Start' } },
+      { id: 'task-analyze', type: 'task', position: { x: 250, y: 160 }, data: { label: 'Analyze Image/Topic', description: 'Analyze the provided image or topic "{{topic}}" and identify key themes, emotions, and relevant keywords.' } },
+      { id: 'task-caption', type: 'task', position: { x: 250, y: 290 }, data: { label: 'Write Caption', description: 'Create an engaging Instagram caption with a hook, story, and call-to-action. Include relevant emojis.' } },
+      { id: 'task-hashtags', type: 'task', position: { x: 250, y: 420 }, data: { label: 'Generate Hashtags', description: 'Create 15-30 relevant hashtags mixing popular, niche, and branded tags. Organize by reach potential.' } },
+      { id: 'instagram-1', type: 'instagram', position: { x: 250, y: 550 }, data: { label: 'Post to Instagram', platform: 'instagram', content: '{{caption}}\n\n{{hashtags}}' } },
+      { id: 'end-1', type: 'end', position: { x: 250, y: 680 }, data: { label: 'End' } },
+    ],
+    edges: [
+      { id: 'e1', source: 'start-1', target: 'task-analyze' },
+      { id: 'e2', source: 'task-analyze', target: 'task-caption' },
+      { id: 'e3', source: 'task-caption', target: 'task-hashtags' },
+      { id: 'e4', source: 'task-hashtags', target: 'instagram-1' },
+      { id: 'e5', source: 'instagram-1', target: 'end-1' },
+    ],
+  },
+  {
+    id: 'linkedin-thought-leadership',
+    name: 'LinkedIn Thought Leadership',
+    description: 'Create professional LinkedIn posts that establish expertise and drive engagement.',
+    icon: '💼',
+    category: 'social-media',
+    difficulty: 'intermediate',
+    estimatedTime: '10 min',
+    useCases: ['Personal branding', 'B2B marketing', 'Industry insights', 'Career growth'],
+    nodes: [
+      { id: 'start-1', type: 'start', position: { x: 250, y: 50 }, data: { label: 'Start' } },
+      { id: 'task-research', type: 'task', position: { x: 250, y: 160 }, data: { label: 'Research Topic', description: 'Research current trends and insights about "{{topic}}" in the professional context.' } },
+      { id: 'task-angle', type: 'task', position: { x: 250, y: 290 }, data: { label: 'Find Unique Angle', description: 'Identify a unique perspective or contrarian viewpoint that will spark discussion.' } },
+      { id: 'task-draft', type: 'task', position: { x: 250, y: 420 }, data: { label: 'Draft Post', description: 'Write a LinkedIn post with: strong hook, personal story/insight, valuable takeaway, and engagement question. Format with line breaks for readability.' } },
+      { id: 'task-optimize', type: 'task', position: { x: 250, y: 550 }, data: { label: 'Optimize for Engagement', description: 'Review and enhance the post for maximum engagement. Add relevant emojis sparingly, ensure the hook is compelling.' } },
+      { id: 'linkedin-1', type: 'linkedin', position: { x: 250, y: 680 }, data: { label: 'Post to LinkedIn', platform: 'linkedin', content: '{{optimized_post}}' } },
+      { id: 'end-1', type: 'end', position: { x: 250, y: 810 }, data: { label: 'End' } },
+    ],
+    edges: [
+      { id: 'e1', source: 'start-1', target: 'task-research' },
+      { id: 'e2', source: 'task-research', target: 'task-angle' },
+      { id: 'e3', source: 'task-angle', target: 'task-draft' },
+      { id: 'e4', source: 'task-draft', target: 'task-optimize' },
+      { id: 'e5', source: 'task-optimize', target: 'linkedin-1' },
+      { id: 'e6', source: 'linkedin-1', target: 'end-1' },
+    ],
+    steps: [
+      { nodeId: 'task-draft', title: 'LinkedIn Best Practices', description: 'LinkedIn rewards engagement, so end with a question or call-to-action.', tip: 'Posts with 1-2 emojis and line breaks perform better. Aim for 1200-1500 characters.' },
+    ],
+  },
+
   // ============ AI-POWERED ============
   {
     id: 'content-generator',
@@ -499,6 +622,7 @@ export const templateCategories = [
   { id: 'getting-started', label: '🚀 Getting Started', description: 'Perfect for beginners' },
   { id: 'automation', label: '⚡ Automation', description: 'Automate repetitive tasks' },
   { id: 'notification', label: '📧 Notifications', description: 'Alerts and emails' },
+  { id: 'social-media', label: '📱 Social Media', description: 'Post to social networks' },
   { id: 'data', label: '📊 Data Processing', description: 'Fetch, transform, analyze' },
   { id: 'integration', label: '🔗 Integrations', description: 'Connect external services' },
   { id: 'ai-powered', label: '✨ AI-Powered', description: 'Smart automation with AI' },
