@@ -392,6 +392,23 @@ export function PropertyPanel({ node, onClose, onUpdate, onDelete }: PropertyPan
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="node-webhook" className="flex items-center gap-2">
+                n8n Webhook URL
+                <span className="text-xs text-destructive">*required</span>
+              </Label>
+              <Input
+                id="node-webhook"
+                value={node.data?.webhookUrl || ''}
+                onChange={(e) => handleChange('webhookUrl', e.target.value)}
+                placeholder="https://your-n8n-instance.com/webhook/..."
+                className="bg-card font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                n8n webhook that handles posting to {platformNames[node.type as keyof typeof platformNames]}
+              </p>
+            </div>
+            <Separator />
+            <div className="space-y-2">
               <Label htmlFor="node-content">Post Content</Label>
               <Textarea
                 id="node-content"

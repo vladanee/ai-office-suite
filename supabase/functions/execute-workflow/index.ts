@@ -105,6 +105,13 @@ interface WorkflowNode {
     // HTTP node
     method?: string;
     headers?: string;
+    // Social media nodes
+    content?: string;
+    hashtags?: string;
+    mediaUrl?: string;
+    scheduledAt?: string;
+    webhookUrl?: string;
+    platform?: 'twitter' | 'linkedin' | 'instagram' | 'facebook';
   };
   position: { x: number; y: number };
 }
@@ -360,6 +367,15 @@ serve(async (req) => {
             case "http":
               const httpResult = await executeHTTP(currentNode, context);
               context.results[currentNodeId] = httpResult;
+              processedCount++;
+              break;
+
+            case "twitter":
+            case "linkedin":
+            case "instagram":
+            case "facebook":
+              const socialResult = await executeSocialMedia(currentNode, context);
+              context.results[currentNodeId] = socialResult;
               processedCount++;
               break;
 
@@ -1008,6 +1024,163 @@ async function executeHTTP(
     return {
       success: false,
       error: error instanceof Error ? error.message : "HTTP request failed",
+    };
+  }
+}
+
+async function executeSocialMedia(
+  node: WorkflowNode,
+  context: ExecutionContext
+): Promise<unknown> {
+  const platform = node.type as 'twitter' | 'linkedin' | 'instagram' | 'facebook';
+  const { content, hashtags, mediaUrl, scheduledAt, webhookUrl, label } = node.data;
+  
+  console.log(`Executing social media post: ${platform} - ${label}`);
+
+  if (!webhookUrl) {
+    return { 
+      success: false, 
+      error: "No n8n webhook URL configured. Please set up an n8n webhook to handle social media posting." 
+    };
+  }
+
+  // SSRF Protection: Validate webhook URL
+  const urlValidation = isUrlSafe(webhookUrl);
+  if (!urlValidation.safe) {
+    console.error(`Social media webhook URL blocked (SSRF protection): ${webhookUrl} - ${urlValidation.reason}`);
+    return { 
+      success: false, 
+      error: `URL not allowed: ${urlValidation.reason}` 
+    };
+  }
+
+  // Process content with variable substitution
+  let processedContent = content || '';
+  let processedHashtags = hashtags || '';
+  
+  for (const [key, value] of Object.entries(context.variables)) {
+    const placeholder = `{{${key}}}`;
+    if (isValidVariableValue(value)) {
+      const sanitizedValue = sanitizeForText(value);
+      processedContent = processedContent.replace(new RegExp(placeholder, "g"), sanitizedValue);
+      processedHashtags = processedHashtags.replace(new RegExp(placeholder, "g"), sanitizedValue);
+    }
+  }
+
+  // Build the full post content with hashtags
+  const fullContent = processedHashtags 
+    ? `${processedContent}\n\n${processedHashtags}`.trim()
+    : processedContent;
+
+  // Platform-specific character limits
+  const characterLimits: Record<string, number> = {
+    twitter: 280,
+    linkedin: 3000,
+    instagram: 2200,
+    facebook: 63206,
+  };
+
+  const limit = characterLimits[platform] || 3000;
+  if (fullContent.length > limit) {
+    console.warn(`Content exceeds ${platform} character limit: ${fullContent.length}/${limit}`);
+  }
+
+  try {
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), EXTERNAL_REQUEST_TIMEOUT_MS);
+
+    // Build payload for n8n webhook
+    const payload = {
+      platform,
+      action: 'post',
+      content: processedContent,
+      hashtags: processedHashtags,
+      fullContent,
+      mediaUrl: mediaUrl || null,
+      scheduledAt: scheduledAt || null,
+      isScheduled: Boolean(scheduledAt),
+      // Workflow context
+      workflowId: context.workflowId,
+      runId: context.runId,
+      nodeId: node.id,
+      nodeLabel: label,
+      // Additional context data
+      variables: context.variables,
+      timestamp: new Date().toISOString(),
+    };
+
+    console.log(`Sending to n8n webhook: ${webhookUrl}`);
+
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    // Check response size
+    const contentLength = response.headers.get('content-length');
+    if (contentLength && parseInt(contentLength) > MAX_RESPONSE_SIZE) {
+      return {
+        success: false,
+        error: `Response too large: ${contentLength} bytes exceeds maximum of ${MAX_RESPONSE_SIZE} bytes`,
+      };
+    }
+
+    const responseText = await response.text();
+    
+    // Validate response size
+    if (responseText.length > MAX_RESPONSE_SIZE) {
+      return {
+        success: false,
+        error: `Response too large: ${responseText.length} bytes exceeds maximum of ${MAX_RESPONSE_SIZE} bytes`,
+      };
+    }
+
+    let responseData: unknown;
+    try {
+      responseData = JSON.parse(responseText);
+    } catch {
+      responseData = responseText;
+    }
+
+    console.log(`Social media webhook response: ${response.status}`);
+
+    // Store result in context
+    const outputVarName = `social_${platform}_${node.id.replace(/[^a-zA-Z0-9]/g, "_")}`;
+    context.variables[outputVarName] = responseData;
+
+    return {
+      success: response.ok,
+      platform,
+      status: response.status,
+      contentLength: fullContent.length,
+      characterLimit: limit,
+      isScheduled: Boolean(scheduledAt),
+      scheduledAt: scheduledAt || null,
+      data: responseData,
+      outputVar: outputVarName,
+    };
+  } catch (error) {
+    console.error(`Social media post error: ${error}`);
+    
+    if (error instanceof Error && error.name === 'AbortError') {
+      return {
+        success: false,
+        platform,
+        error: `Request timeout after ${EXTERNAL_REQUEST_TIMEOUT_MS / 1000} seconds`,
+      };
+    }
+    
+    return {
+      success: false,
+      platform,
+      error: error instanceof Error ? error.message : "Social media post failed",
     };
   }
 }
