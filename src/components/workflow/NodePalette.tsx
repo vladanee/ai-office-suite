@@ -12,7 +12,11 @@ import {
   Repeat,
   Mail,
   Shuffle,
-  Globe
+  Globe,
+  Twitter,
+  Linkedin,
+  Instagram,
+  Facebook
 } from 'lucide-react';
 
 const nodeCategories = [
@@ -32,6 +36,15 @@ const nodeCategories = [
       { type: 'task', label: 'Task', icon: ListTodo, color: 'primary', description: 'Execute a task' },
       { type: 'assignment', label: 'Assignment', icon: Users, color: 'accent', description: 'Assign to persona' },
       { type: 'qa', label: 'QA Check', icon: ClipboardCheck, color: 'warning', description: 'Quality assurance' },
+    ],
+  },
+  {
+    name: 'Social Media',
+    nodes: [
+      { type: 'twitter', label: 'Twitter/X', icon: Twitter, color: 'primary', description: 'Post to Twitter/X' },
+      { type: 'linkedin', label: 'LinkedIn', icon: Linkedin, color: 'primary', description: 'Post to LinkedIn' },
+      { type: 'instagram', label: 'Instagram', icon: Instagram, color: 'accent', description: 'Post to Instagram' },
+      { type: 'facebook', label: 'Facebook', icon: Facebook, color: 'primary', description: 'Post to Facebook' },
     ],
   },
   {
