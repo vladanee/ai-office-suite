@@ -19,7 +19,7 @@ port = 54323
 verify_jwt = false
 
 [functions.ai-task-generator]
-verify_jwt = true
+verify_jwt = false
 
 [functions.execute-workflow]
 verify_jwt = true
