@@ -45,19 +45,18 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } }
     });
 
-    // Validate the JWT token
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    // Validate the JWT token using getUser
+    const { data: userData, error: userError } = await supabase.auth.getUser();
     
-    if (claimsError || !claimsData?.claims) {
-      console.error('JWT validation failed:', claimsError);
+    if (userError || !userData?.user) {
+      console.error('JWT validation failed:', userError);
       return new Response(
         JSON.stringify({ error: 'Unauthorized', success: false }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const userId = claimsData.claims.sub;
+    const userId = userData.user.id;
     console.log('Authenticated user:', userId);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
