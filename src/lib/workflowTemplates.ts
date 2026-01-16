@@ -507,6 +507,88 @@ export const workflowTemplates: WorkflowTemplate[] = [
       { nodeId: 'task-draft', title: 'LinkedIn Best Practices', description: 'LinkedIn rewards engagement, so end with a question or call-to-action.', tip: 'Posts with 1-2 emojis and line breaks perform better. Aim for 1200-1500 characters.' },
     ],
   },
+  {
+    id: 'week-of-content',
+    name: 'Week of Content Scheduler',
+    description: 'Schedule 7 days of social media posts from a single workflow run. Uses chained Delay nodes to automatically space content.',
+    icon: '📅',
+    category: 'social-media',
+    difficulty: 'intermediate',
+    estimatedTime: '15 min',
+    useCases: ['Content batching', 'Social media scheduling', 'Campaign launches', 'Consistent posting'],
+    featured: true,
+    nodes: [
+      { id: 'start-1', type: 'start', position: { x: 250, y: 50 }, data: { label: 'Start' } },
+      { id: 'task-plan', type: 'task', position: { x: 250, y: 160 }, data: { label: 'Plan Content Week', description: 'Create a content plan for 7 days around the theme "{{theme}}". Generate unique post ideas for each day with engaging hooks.' } },
+      
+      // Day 1 - Immediate
+      { id: 'task-day1', type: 'task', position: { x: 250, y: 290 }, data: { label: '📝 Day 1 Content', description: 'Write an engaging post for Day 1: Introduction to the weekly theme. Hook the audience and set expectations.' } },
+      { id: 'social-day1', type: 'social', position: { x: 250, y: 400 }, data: { label: '🚀 Post Day 1', platform: 'twitter', content: '{{day1_content}}' } },
+      
+      // Day 2
+      { id: 'delay-day2', type: 'delay', position: { x: 250, y: 530 }, data: { label: '⏰ Wait 24h', delay: 86400 } },
+      { id: 'task-day2', type: 'task', position: { x: 250, y: 640 }, data: { label: '📝 Day 2 Content', description: 'Write Day 2 post: Deep dive into an aspect of the theme. Share a valuable tip or insight.' } },
+      { id: 'social-day2', type: 'social', position: { x: 250, y: 750 }, data: { label: '🚀 Post Day 2', platform: 'linkedin', content: '{{day2_content}}' } },
+      
+      // Day 3
+      { id: 'delay-day3', type: 'delay', position: { x: 250, y: 880 }, data: { label: '⏰ Wait 24h', delay: 86400 } },
+      { id: 'task-day3', type: 'task', position: { x: 250, y: 990 }, data: { label: '📝 Day 3 Content', description: 'Write Day 3 post: Share a behind-the-scenes look or personal story related to the theme.' } },
+      { id: 'social-day3', type: 'social', position: { x: 250, y: 1100 }, data: { label: '🚀 Post Day 3', platform: 'instagram', content: '{{day3_content}}' } },
+      
+      // Day 4
+      { id: 'delay-day4', type: 'delay', position: { x: 250, y: 1230 }, data: { label: '⏰ Wait 24h', delay: 86400 } },
+      { id: 'task-day4', type: 'task', position: { x: 250, y: 1340 }, data: { label: '📝 Day 4 Content', description: 'Write Day 4 post: Educational content with actionable advice. Use a listicle or how-to format.' } },
+      { id: 'social-day4', type: 'social', position: { x: 250, y: 1450 }, data: { label: '🚀 Post Day 4', platform: 'twitter', content: '{{day4_content}}' } },
+      
+      // Day 5
+      { id: 'delay-day5', type: 'delay', position: { x: 250, y: 1580 }, data: { label: '⏰ Wait 24h', delay: 86400 } },
+      { id: 'task-day5', type: 'task', position: { x: 250, y: 1690 }, data: { label: '📝 Day 5 Content', description: 'Write Day 5 post: Engagement-focused content. Ask a question or create a poll to spark discussion.' } },
+      { id: 'social-day5', type: 'social', position: { x: 250, y: 1800 }, data: { label: '🚀 Post Day 5', platform: 'linkedin', content: '{{day5_content}}' } },
+      
+      // Day 6
+      { id: 'delay-day6', type: 'delay', position: { x: 250, y: 1930 }, data: { label: '⏰ Wait 24h', delay: 86400 } },
+      { id: 'task-day6', type: 'task', position: { x: 250, y: 2040 }, data: { label: '📝 Day 6 Content', description: 'Write Day 6 post: Case study or success story that demonstrates the theme in action.' } },
+      { id: 'social-day6', type: 'social', position: { x: 250, y: 2150 }, data: { label: '🚀 Post Day 6', platform: 'facebook', content: '{{day6_content}}' } },
+      
+      // Day 7
+      { id: 'delay-day7', type: 'delay', position: { x: 250, y: 2280 }, data: { label: '⏰ Wait 24h', delay: 86400 } },
+      { id: 'task-day7', type: 'task', position: { x: 250, y: 2390 }, data: { label: '📝 Day 7 Content', description: 'Write Day 7 post: Week wrap-up with key takeaways. Include a call-to-action for next steps.' } },
+      { id: 'social-day7', type: 'social', position: { x: 250, y: 2500 }, data: { label: '🚀 Post Day 7', platform: 'twitter', content: '{{day7_content}}' } },
+      
+      { id: 'task-summary', type: 'task', position: { x: 250, y: 2630 }, data: { label: '📊 Week Summary', description: 'Generate a summary of all 7 posts published this week. Note engagement patterns for future optimization.' } },
+      { id: 'end-1', type: 'end', position: { x: 250, y: 2760 }, data: { label: 'End' } },
+    ],
+    edges: [
+      { id: 'e1', source: 'start-1', target: 'task-plan' },
+      { id: 'e2', source: 'task-plan', target: 'task-day1' },
+      { id: 'e3', source: 'task-day1', target: 'social-day1' },
+      { id: 'e4', source: 'social-day1', target: 'delay-day2' },
+      { id: 'e5', source: 'delay-day2', target: 'task-day2' },
+      { id: 'e6', source: 'task-day2', target: 'social-day2' },
+      { id: 'e7', source: 'social-day2', target: 'delay-day3' },
+      { id: 'e8', source: 'delay-day3', target: 'task-day3' },
+      { id: 'e9', source: 'task-day3', target: 'social-day3' },
+      { id: 'e10', source: 'social-day3', target: 'delay-day4' },
+      { id: 'e11', source: 'delay-day4', target: 'task-day4' },
+      { id: 'e12', source: 'task-day4', target: 'social-day4' },
+      { id: 'e13', source: 'social-day4', target: 'delay-day5' },
+      { id: 'e14', source: 'delay-day5', target: 'task-day5' },
+      { id: 'e15', source: 'task-day5', target: 'social-day5' },
+      { id: 'e16', source: 'social-day5', target: 'delay-day6' },
+      { id: 'e17', source: 'delay-day6', target: 'task-day6' },
+      { id: 'e18', source: 'task-day6', target: 'social-day6' },
+      { id: 'e19', source: 'social-day6', target: 'delay-day7' },
+      { id: 'e20', source: 'delay-day7', target: 'task-day7' },
+      { id: 'e21', source: 'task-day7', target: 'social-day7' },
+      { id: 'e22', source: 'social-day7', target: 'task-summary' },
+      { id: 'e23', source: 'task-summary', target: 'end-1' },
+    ],
+    steps: [
+      { nodeId: 'task-plan', title: 'Content Strategy', description: 'Start by setting a {{theme}} variable. The AI will plan all 7 days around this central theme.', tip: 'Good themes: product launch, industry insights, behind-the-scenes, tips series, customer stories' },
+      { nodeId: 'delay-day2', title: 'Delay Chains', description: 'Each 24-hour delay spaces posts exactly one day apart. The workflow runs continuously for 7 days.', tip: 'Delay is in seconds: 86400 = 24 hours. Adjust for different schedules (e.g., 43200 = 12 hours).' },
+      { nodeId: 'social-day3', title: 'Platform Rotation', description: 'Posts rotate across platforms (Twitter, LinkedIn, Instagram, Facebook) for maximum reach.', tip: 'Configure each Social node with your n8n webhook URL to actually post to your accounts.' },
+    ],
+  },
 
   // ============ AI-POWERED ============
   {
