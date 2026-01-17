@@ -355,6 +355,103 @@ export type Database = {
           },
         ]
       }
+      tasks: {
+        Row: {
+          acceptance_criteria: Json | null
+          actual_hours: number | null
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          due_date: string | null
+          estimated_hours: number | null
+          id: string
+          metadata: Json | null
+          office_id: string | null
+          persona_id: string | null
+          priority: string
+          skills_required: Json | null
+          source: string
+          started_at: string | null
+          status: string
+          suggested_approach: string | null
+          tags: Json | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          acceptance_criteria?: Json | null
+          actual_hours?: number | null
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          due_date?: string | null
+          estimated_hours?: number | null
+          id?: string
+          metadata?: Json | null
+          office_id?: string | null
+          persona_id?: string | null
+          priority?: string
+          skills_required?: Json | null
+          source?: string
+          started_at?: string | null
+          status?: string
+          suggested_approach?: string | null
+          tags?: Json | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          acceptance_criteria?: Json | null
+          actual_hours?: number | null
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          due_date?: string | null
+          estimated_hours?: number | null
+          id?: string
+          metadata?: Json | null
+          office_id?: string | null
+          persona_id?: string | null
+          priority?: string
+          skills_required?: Json | null
+          source?: string
+          started_at?: string | null
+          status?: string
+          suggested_approach?: string | null
+          tags?: Json | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workflow_runs: {
         Row: {
           completed_at: string | null

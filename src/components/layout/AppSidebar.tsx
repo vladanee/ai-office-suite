@@ -12,7 +12,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
-  MessageSquare
+  MessageSquare,
+  ListTodo
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/appStore';
@@ -26,6 +27,7 @@ const navItems = [
   { path: '/departments', icon: Building2, label: 'Departments' },
   { path: '/personas', icon: Users, label: 'Personas' },
   { path: '/chat', icon: MessageSquare, label: 'Chat' },
+  { path: '/tasks', icon: ListTodo, label: 'Tasks' },
   { path: '/workflows', icon: Workflow, label: 'Workflows' },
   { path: '/runs', icon: Play, label: 'Runs' },
   { path: '/analytics', icon: BarChart3, label: 'Analytics' },
