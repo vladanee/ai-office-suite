@@ -10,7 +10,9 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
-  Loader2
+  Loader2,
+  FileText,
+  Settings2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +23,10 @@ import { TaskCard } from '@/components/tasks/TaskCard';
 import { TaskDialog } from '@/components/tasks/TaskDialog';
 import { DeleteTaskDialog } from '@/components/tasks/DeleteTaskDialog';
 import { TaskGenerationDialog } from '@/components/tasks/TaskGenerationDialog';
+import { TemplateDialog } from '@/components/tasks/TemplateDialog';
+import { TemplatePicker } from '@/components/tasks/TemplatePicker';
 import { useTasks, Task, TaskInsert, TaskUpdate } from '@/hooks/useTasks';
+import { useTaskTemplates, TaskTemplate, TaskTemplateInsert } from '@/hooks/useTaskTemplates';
 import { useCurrentOffice, usePersonas } from '@/hooks/useOfficeData';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -36,6 +41,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
@@ -63,6 +69,14 @@ export default function Tasks() {
     deleteTask,
     bulkCreateTasks,
   } = useTasks(currentOffice?.id);
+  const {
+    templates,
+    loading: templatesLoading,
+    createTemplate,
+    updateTemplate,
+    deleteTemplate,
+    incrementUsage,
+  } = useTaskTemplates();
 
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const [searchQuery, setSearchQuery] = useState('');
@@ -85,7 +99,12 @@ export default function Tasks() {
     status?: string | null;
   } | null>(null);
 
-  const isLoading = officeLoading || personasLoading || tasksLoading;
+  // Template dialogs
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<TaskTemplate | null>(null);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+
+  const isLoading = officeLoading || personasLoading || tasksLoading || templatesLoading;
 
   // Filter tasks
   const filteredTasks = useMemo(() => {
@@ -212,6 +231,31 @@ export default function Tasks() {
     }
   };
 
+  // Template handlers
+  const handleSelectTemplate = (template: TaskTemplate) => {
+    setEditingTask(null);
+    setTaskDialogOpen(true);
+    incrementUsage(template.id);
+    // Prefill task dialog with template data - using setTimeout to ensure dialog is open
+    setTimeout(() => {
+      const event = new CustomEvent('prefill-task', { detail: template });
+      window.dispatchEvent(event);
+    }, 100);
+  };
+
+  const handleSaveTemplate = async (templateData: TaskTemplateInsert) => {
+    if (editingTemplate) {
+      await updateTemplate(editingTemplate.id, templateData);
+    } else {
+      await createTemplate(templateData);
+    }
+  };
+
+  const handleOpenTemplateManager = () => {
+    setEditingTemplate(null);
+    setTemplateDialogOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -230,8 +274,43 @@ export default function Tasks() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Templates
+                  {templates.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">{templates.length}</Badge>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleOpenTemplateManager}>
+                  <Settings2 className="w-4 h-4 mr-2" />
+                  Manage Templates
+                </DropdownMenuItem>
+                {templates.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {templates.slice(0, 5).map(template => (
+                      <DropdownMenuItem 
+                        key={template.id}
+                        onClick={() => handleSelectTemplate(template)}
+                      >
+                        {template.icon} {template.name}
+                      </DropdownMenuItem>
+                    ))}
+                    {templates.length > 5 && (
+                      <DropdownMenuItem onClick={() => setTemplatePickerOpen(true)}>
+                        View all templates...
+                      </DropdownMenuItem>
+                    )}
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
                   <Sparkles className="w-4 h-4 mr-2" />
-                  Generate Tasks
+                  Generate
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -240,7 +319,7 @@ export default function Tasks() {
                     key={persona.id}
                     onClick={() => handleOpenGenerateDialog(persona)}
                   >
-                    {persona.avatar || '🤖'} Generate for {persona.name}
+                    {persona.avatar || '🤖'} {persona.name}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -442,6 +521,11 @@ export default function Tasks() {
         personas={personas.map(p => ({ id: p.id, name: p.name, avatar: p.avatar }))}
         onSave={handleSaveTask}
         officeId={currentOffice?.id || ''}
+        templates={templates}
+        onOpenTemplatePicker={() => {
+          setTaskDialogOpen(false);
+          setTemplatePickerOpen(true);
+        }}
       />
 
       <DeleteTaskDialog
@@ -456,6 +540,21 @@ export default function Tasks() {
         onOpenChange={setGenerateDialogOpen}
         persona={selectedPersonaForGen}
         onSaveTasks={handleSaveGeneratedTasks}
+      />
+
+      <TemplateDialog
+        open={templateDialogOpen}
+        onOpenChange={setTemplateDialogOpen}
+        template={editingTemplate}
+        onSave={handleSaveTemplate}
+      />
+
+      <TemplatePicker
+        open={templatePickerOpen}
+        onOpenChange={setTemplatePickerOpen}
+        templates={templates}
+        onSelect={handleSelectTemplate}
+        onCreateNew={handleOpenTemplateManager}
       />
     </div>
   );

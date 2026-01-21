@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, X, Plus } from 'lucide-react';
+import { Calendar as CalendarIcon, X, Plus, FileText } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -28,6 +28,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Task, TaskInsert, TaskUpdate } from '@/hooks/useTasks';
+import { TaskTemplate } from '@/hooks/useTaskTemplates';
 
 interface TaskDialogProps {
   open: boolean;
@@ -36,6 +37,8 @@ interface TaskDialogProps {
   personas?: { id: string; name: string; avatar: string | null }[];
   onSave: (data: TaskInsert | TaskUpdate) => Promise<{ error: Error | null }>;
   officeId: string;
+  templates?: TaskTemplate[];
+  onOpenTemplatePicker?: () => void;
 }
 
 export function TaskDialog({
@@ -45,6 +48,8 @@ export function TaskDialog({
   personas = [],
   onSave,
   officeId,
+  templates = [],
+  onOpenTemplatePicker,
 }: TaskDialogProps) {
   const isEditing = !!task;
   
@@ -84,6 +89,22 @@ export function TaskDialog({
       setAcceptanceCriteria([]);
     }
   }, [task, open]);
+
+  // Listen for template prefill events
+  useEffect(() => {
+    const handlePrefill = (event: CustomEvent<TaskTemplate>) => {
+      const template = event.detail;
+      setTitle(template.title_template);
+      setDescription(template.description_template || '');
+      setPriority(template.priority as Task['priority']);
+      setEstimatedHours(template.estimated_hours?.toString() || '');
+      setTags(template.tags || []);
+      setAcceptanceCriteria(template.acceptance_criteria || []);
+    };
+
+    window.addEventListener('prefill-task', handlePrefill as EventListener);
+    return () => window.removeEventListener('prefill-task', handlePrefill as EventListener);
+  }, []);
 
   const handleAddTag = () => {
     if (newTag.trim() && !tags.includes(newTag.trim())) {
@@ -137,9 +158,17 @@ export function TaskDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? 'Edit Task' : 'Create New Task'}
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>
+              {isEditing ? 'Edit Task' : 'Create New Task'}
+            </DialogTitle>
+            {!isEditing && templates.length > 0 && onOpenTemplatePicker && (
+              <Button variant="outline" size="sm" onClick={onOpenTemplatePicker}>
+                <FileText className="w-4 h-4 mr-2" />
+                Use Template
+              </Button>
+            )}
+          </div>
         </DialogHeader>
 
         <div className="space-y-6 py-4">

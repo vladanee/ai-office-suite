@@ -355,6 +355,84 @@ export type Database = {
           },
         ]
       }
+      task_templates: {
+        Row: {
+          acceptance_criteria: Json | null
+          category: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          description_template: string | null
+          estimated_hours: number | null
+          icon: string | null
+          id: string
+          is_shared: boolean | null
+          name: string
+          office_id: string
+          priority: string
+          skills_required: Json | null
+          tags: Json | null
+          title_template: string
+          updated_at: string
+          usage_count: number | null
+        }
+        Insert: {
+          acceptance_criteria?: Json | null
+          category?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          description_template?: string | null
+          estimated_hours?: number | null
+          icon?: string | null
+          id?: string
+          is_shared?: boolean | null
+          name: string
+          office_id: string
+          priority?: string
+          skills_required?: Json | null
+          tags?: Json | null
+          title_template: string
+          updated_at?: string
+          usage_count?: number | null
+        }
+        Update: {
+          acceptance_criteria?: Json | null
+          category?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          description_template?: string | null
+          estimated_hours?: number | null
+          icon?: string | null
+          id?: string
+          is_shared?: boolean | null
+          name?: string
+          office_id?: string
+          priority?: string
+          skills_required?: Json | null
+          tags?: Json | null
+          title_template?: string
+          updated_at?: string
+          usage_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_templates_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           acceptance_criteria: Json | null
