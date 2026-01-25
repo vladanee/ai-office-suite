@@ -446,7 +446,7 @@ export type Database = {
           estimated_hours: number | null
           id: string
           metadata: Json | null
-          office_id: string | null
+          office_id: string
           persona_id: string | null
           priority: string
           skills_required: Json | null
@@ -470,7 +470,7 @@ export type Database = {
           estimated_hours?: number | null
           id?: string
           metadata?: Json | null
-          office_id?: string | null
+          office_id: string
           persona_id?: string | null
           priority?: string
           skills_required?: Json | null
@@ -494,7 +494,7 @@ export type Database = {
           estimated_hours?: number | null
           id?: string
           metadata?: Json | null
-          office_id?: string | null
+          office_id?: string
           persona_id?: string | null
           priority?: string
           skills_required?: Json | null
