@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
+import { getAIProviderConfig, streamOllamaChat } from '@/lib/aiProvider';
 
 interface Message {
   id: string;
@@ -189,43 +190,9 @@ export function usePersonaChat(personaId: string | null, officeId: string | unde
         content: m.content,
       }));
 
-      // Get user's session token for proper authentication
-      const { data: { session: authSession } } = await supabase.auth.getSession();
-      if (!authSession?.access_token) {
-        throw new Error('Not authenticated');
-      }
-
-      // Call the edge function with streaming using user's token
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/persona-chat`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${authSession.access_token}`,
-          },
-          body: JSON.stringify({
-            sessionId: session.id,
-            messages: apiMessages,
-            personaSystemPrompt: persona.system_prompt,
-            personaName: persona.name,
-            personaRole: persona.role,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to get response');
-      }
-
-      // Handle streaming response
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No response body');
-
-      const decoder = new TextDecoder();
+      const providerConfig = getAIProviderConfig();
       let assistantContent = '';
-      let tempMessageId = `temp-${Date.now()}`;
+      const tempMessageId = `temp-${Date.now()}`;
 
       // Add temporary assistant message
       setMessages((prev) => [
@@ -233,39 +200,95 @@ export function usePersonaChat(personaId: string | null, officeId: string | unde
         { id: tempMessageId, role: 'assistant', content: '', created_at: new Date().toISOString() },
       ]);
 
-      let buffer = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      const updateTempMessage = (newContent: string) => {
+        assistantContent = newContent;
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === tempMessageId ? { ...m, content: assistantContent } : m
+          )
+        );
+      };
 
-        buffer += decoder.decode(value, { stream: true });
+      if (providerConfig.provider === 'ollama') {
+        // Use local Ollama
+        const systemPrompt = persona.system_prompt ||
+          `You are ${persona.name}, a ${persona.role}. Respond in character, being helpful and professional while maintaining your persona's personality and expertise.`;
 
-        // Process line by line
-        let newlineIndex: number;
-        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
-          let line = buffer.slice(0, newlineIndex);
-          buffer = buffer.slice(newlineIndex + 1);
-
-          if (line.endsWith('\r')) line = line.slice(0, -1);
-          if (line.startsWith(':') || line.trim() === '') continue;
-          if (!line.startsWith('data: ')) continue;
-
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === '[DONE]') break;
-
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const delta = parsed.choices?.[0]?.delta?.content;
-            if (delta) {
+        await new Promise<void>((resolve, reject) => {
+          streamOllamaChat({
+            messages: apiMessages,
+            systemPrompt,
+            onDelta: (delta) => {
               assistantContent += delta;
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === tempMessageId ? { ...m, content: assistantContent } : m
-                )
-              );
+              updateTempMessage(assistantContent);
+            },
+            onDone: resolve,
+            onError: reject,
+          });
+        });
+      } else {
+        // Use cloud edge function
+        const { data: { session: authSession } } = await supabase.auth.getSession();
+        if (!authSession?.access_token) {
+          throw new Error('Not authenticated');
+        }
+
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/persona-chat`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${authSession.access_token}`,
+            },
+            body: JSON.stringify({
+              sessionId: session.id,
+              messages: apiMessages,
+              personaSystemPrompt: persona.system_prompt,
+              personaName: persona.name,
+              personaRole: persona.role,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to get response');
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error('No response body');
+
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          let newlineIndex: number;
+          while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+            let line = buffer.slice(0, newlineIndex);
+            buffer = buffer.slice(newlineIndex + 1);
+
+            if (line.endsWith('\r')) line = line.slice(0, -1);
+            if (line.startsWith(':') || line.trim() === '') continue;
+            if (!line.startsWith('data: ')) continue;
+
+            const jsonStr = line.slice(6).trim();
+            if (jsonStr === '[DONE]') break;
+
+            try {
+              const parsed = JSON.parse(jsonStr);
+              const delta = parsed.choices?.[0]?.delta?.content;
+              if (delta) {
+                assistantContent += delta;
+                updateTempMessage(assistantContent);
+              }
+            } catch {
+              // Incomplete JSON, continue
             }
-          } catch {
-            // Incomplete JSON, continue
           }
         }
       }
