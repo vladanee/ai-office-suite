@@ -6,6 +6,7 @@ import {
   Shield, 
   Key,
   CreditCard,
+  Bot,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OfficeSettingsTab } from '@/components/settings/OfficeSettingsTab';
 import { ProfileSettingsTab } from '@/components/settings/ProfileSettingsTab';
 import { BillingSettingsTab } from '@/components/settings/BillingSettingsTab';
+import { AIProviderSettingsTab } from '@/components/settings/AIProviderSettingsTab';
 
 const settingsSections = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -24,6 +26,7 @@ const settingsSections = [
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'security', label: 'Security', icon: Shield },
   { id: 'billing', label: 'Billing', icon: CreditCard },
+  { id: 'ai-provider', label: 'AI Provider', icon: Bot },
   { id: 'api', label: 'API Keys', icon: Key },
 ];
 
@@ -167,6 +170,10 @@ export default function Settings() {
                 </CardContent>
               </Card>
             </motion.div>
+          </TabsContent>
+
+          <TabsContent value="ai-provider">
+            <AIProviderSettingsTab />
           </TabsContent>
 
           <TabsContent value="billing">
